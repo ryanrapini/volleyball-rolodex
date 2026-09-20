@@ -30,6 +30,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/people/{person}/quick-edit', [PersonController::class, 'quickEdit'])->name('people.quick-edit');
     Route::post('/people/{person}/quick-update', [PersonController::class, 'quickUpdate'])->name('people.quick-update');
 
+    Route::post('/people/bulk-answers', [PersonController::class, 'bulkAnswers'])->name('people.bulk-answers');
+
     Route::post('/ai/chat', [AiChatController::class, 'chat'])->name('ai.chat');
     Route::post('/ai/transcribe', [AiChatController::class, 'transcribe'])->name('ai.transcribe');
 });

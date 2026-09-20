@@ -27,6 +27,19 @@ class PersonRequest extends FormRequest
             'notes' => ['nullable', 'string', 'max:10000'],
             'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'remove_photo' => ['nullable', 'boolean'],
+            ...$this->answerRules(),
+        ];
+    }
+
+    /**
+     * The rules for the answer payload, shared with the bulk editor so both
+     * doors validate category data identically.
+     *
+     * @return array<string, mixed>
+     */
+    protected function answerRules(): array
+    {
+        return [
             // Answers arrive as a list so an entry always carries its category
             // id, even when every field inside it is empty.
             'answers' => ['array'],

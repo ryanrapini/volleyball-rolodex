@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\CategoryType;
+use App\Http\Requests\BulkAnswersRequest;
 use App\Http\Requests\PersonRequest;
 use App\Models\Category;
 use App\Models\CategoryOption;
@@ -144,6 +145,77 @@ class PersonController extends Controller
         return redirect()
             ->route('people.show', $person)
             ->with('status', 'Saved '.$person->name.'.');
+    }
+
+    /**
+     * Apply the same answers to several people from the list.
+     *
+     * Pick-any categories are merged into whatever each person already has, so
+     * this adds rather than replaces. Anything the owner did not set is left
+     * exactly as it was — a bulk edit should never wipe a value by omission.
+     */
+    public function bulkAnswers(BulkAnswersRequest $request): JsonResponse
+    {
+        $categories = $request->categories();
+        $answers = $request->answers();
+
+        $people = $request->user()->people()
+            ->whereIn('id', $request->people())
+            ->get();
+
+        $updated = 0;
+
+        foreach ($people as $person) {
+            $changes = [];
+
+            foreach ($answers as $categoryId => $answer) {
+                $category = $categories->get($categoryId);
+
+                if (! $category instanceof Category) {
+                    continue;
+                }
+
+                if ($category->type === CategoryType::Multiple) {
+                    // An empty selection means "leave this category alone", not
+                    // "clear it" — otherwise every untouched row counts as a change.
+                    if ($answer['option_ids'] === []) {
+                        continue;
+                    }
+
+                    $existing = $person->categoryValues()
+                        ->where('category_id', $categoryId)
+                        ->pluck('category_option_id')
+                        ->filter()
+                        ->all();
+
+                    $merged = array_values(array_unique([...$existing, ...$answer['option_ids']]));
+
+                    $changes[$categoryId] = ['value' => null, 'option_id' => null, 'option_ids' => $merged];
+
+                    continue;
+                }
+
+                $chosen = $category->type === CategoryType::Boolean
+                    ? $answer['value'] !== null
+                    : $answer['option_id'] !== null;
+
+                if ($chosen) {
+                    $changes[$categoryId] = $answer;
+                }
+            }
+
+            if ($changes === []) {
+                continue;
+            }
+
+            PersonAnswers::sync($person, $changes, $categories);
+            $updated++;
+        }
+
+        return response()->json([
+            'selected' => $people->count(),
+            'updated' => $updated,
+        ]);
     }
 
     /**

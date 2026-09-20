@@ -1,5 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import BulkAnswersModal from '@/Components/BulkAnswersModal.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import QuickEditPersonModal from '@/Components/QuickEditPersonModal.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
@@ -56,6 +57,52 @@ const openQuickEdit = (id) => {
 
 const onQuickEditSaved = () => {
     router.reload({ only: ['people'] });
+};
+
+// Selection mode for applying details to several people at once. Named `picked`
+// because `selected` already holds the filter chip state above.
+const selecting = ref(false);
+const picked = ref([]);
+const bulkOpen = ref(false);
+
+const toggleSelecting = () => {
+    selecting.value = !selecting.value;
+
+    if (!selecting.value) {
+        picked.value = [];
+    }
+};
+
+const inSelection = (id) => picked.value.includes(id);
+
+const toggleSelected = (id) => {
+    const index = picked.value.indexOf(id);
+
+    if (index === -1) {
+        picked.value.push(id);
+    } else {
+        picked.value.splice(index, 1);
+    }
+};
+
+const onCardClick = (event, person) => {
+    if (!selecting.value) {
+        return;
+    }
+
+    // Inertia ignores a click whose default was prevented, so this turns the
+    // card into a toggle without navigating away.
+    event.preventDefault();
+    toggleSelected(person.id);
+};
+
+const clearSelection = () => {
+    picked.value = [];
+};
+
+const onBulkApplied = () => {
+    clearSelection();
+    selecting.value = false;
 };
 
 const visit = () => {
@@ -177,6 +224,16 @@ const clearSearch = () => {
                     >
                         Clear filters
                     </button>
+
+                    <button
+                        type="button"
+                        class="btn px-3 py-1.5 text-xs"
+                        :class="selecting ? 'btn-primary' : 'btn-secondary'"
+                        :aria-pressed="selecting"
+                        @click="toggleSelecting"
+                    >
+                        {{ selecting ? 'Done selecting' : 'Select people' }}
+                    </button>
                 </div>
 
                 <div v-if="showFilters" class="mt-4 space-y-4 border-l-4 border-riso-blue/30 pl-3">
@@ -248,6 +305,8 @@ const clearSearch = () => {
                     <Link
                         :href="route('people.show', person.id)"
                         class="card flex h-full gap-3 p-4 pb-12 transition-transform duration-100 hover:-translate-y-0.5 hover:shadow-print-sm"
+                        :class="inSelection(person.id) ? 'bg-riso-pink/25 shadow-print-sm' : ''"
+                        @click="onCardClick($event, person)"
                     >
                         <img
                             v-if="person.photo_url"
@@ -296,7 +355,17 @@ const clearSearch = () => {
                         </span>
                     </Link>
 
+                    <span
+                        v-if="selecting"
+                        class="absolute right-2 top-2 flex h-6 w-6 items-center justify-center border-2 border-ink font-mono text-xs font-bold"
+                        :class="inSelection(person.id) ? 'bg-riso-pink text-ink' : 'bg-white text-transparent'"
+                        aria-hidden="true"
+                    >
+                        ✓
+                    </span>
+
                     <button
+                        v-if="!selecting"
                         type="button"
                         class="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center border-2 border-ink bg-white text-sm leading-none shadow-print-sm transition-all duration-100 hover:translate-x-[1px] hover:translate-y-[1px] hover:bg-riso-pink hover:shadow-none"
                         :title="`Quick edit ${person.name}`"
@@ -313,6 +382,36 @@ const clearSearch = () => {
                 @close="editingId = null"
                 @saved="onQuickEditSaved"
             />
+
+            <BulkAnswersModal
+                :show="bulkOpen"
+                :person-ids="picked"
+                @close="bulkOpen = false"
+                @applied="onBulkApplied"
+            />
+
+            <!-- Bulk actions, pinned to the bottom while a selection exists -->
+            <div
+                v-if="picked.length"
+                class="fixed inset-x-0 bottom-0 z-30 border-t-2 border-ink bg-paper"
+            >
+                <div
+                    class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8"
+                >
+                    <p class="font-mono text-xs font-bold uppercase tracking-widest text-ink">
+                        {{ picked.length }} selected
+                    </p>
+
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-secondary" @click="clearSelection">
+                            Clear
+                        </button>
+                        <button type="button" class="btn btn-primary" @click="bulkOpen = true">
+                            Apply details
+                        </button>
+                    </div>
+                </div>
+            </div>
 
             <!-- Pagination -->
             <nav
