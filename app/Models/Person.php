@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PersonPhotos;
 use Database\Factories\PersonFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -24,12 +25,17 @@ class Person extends Model
     }
 
     /**
-     * Keep the searchable digits in step with whatever format the user typed.
+     * Keep the searchable digits in step with whatever format the user typed,
+     * and take the photo file with the record when it goes.
      */
     protected static function booted(): void
     {
         static::saving(function (Person $person): void {
             $person->phone_digits = self::phoneDigits($person->phone);
+        });
+
+        static::deleted(function (Person $person): void {
+            PersonPhotos::forget($person->photo_path);
         });
     }
 

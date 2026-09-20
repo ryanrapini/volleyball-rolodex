@@ -15,6 +15,8 @@ const form = useForm({
     phone: props.person.phone ?? '',
     email: props.person.email ?? '',
     notes: props.person.notes ?? '',
+    photo: null,
+    remove_photo: false,
 });
 
 const submit = () => {
@@ -38,6 +40,7 @@ const submit = () => {
                     :form="form"
                     submit-label="Save changes"
                     :cancel-href="route('people.show', person.id)"
+                    :current-photo-url="person.photo_url"
                     @submit="submit"
                 />
             </div>

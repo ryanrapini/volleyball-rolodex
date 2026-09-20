@@ -8,6 +8,8 @@ const form = useForm({
     phone: '',
     email: '',
     notes: '',
+    photo: null,
+    remove_photo: false,
 });
 
 const submit = () => {

@@ -41,7 +41,10 @@ return [
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
-            'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
+            // Root-relative by default so uploaded files resolve on whatever host
+            // serves them (local dev, staging, production) instead of inheriting
+            // APP_URL. Set ASSET_URL to force an absolute host when needed.
+            'url' => env('ASSET_URL') ?: '/storage',
             'visibility' => 'public',
             'throw' => false,
             'report' => false,

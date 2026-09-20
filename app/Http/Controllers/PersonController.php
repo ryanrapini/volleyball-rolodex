@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\PersonRequest;
 use App\Models\Person;
+use App\Support\PersonPhotos;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -35,6 +36,7 @@ class PersonController extends Controller
                 'name' => $person->name,
                 'phone' => $person->phone,
                 'email' => $person->email,
+                'photo_url' => PersonPhotos::url($person->photo_path),
                 'notes_excerpt' => Str::limit((string) $person->notes, 120),
             ]);
 
@@ -51,7 +53,13 @@ class PersonController extends Controller
 
     public function store(PersonRequest $request): RedirectResponse
     {
-        $person = $request->user()->people()->create($request->validated());
+        $person = $request->user()->people()->create(
+            $request->safe()->except(['photo', 'remove_photo']),
+        );
+
+        if ($request->hasFile('photo')) {
+            PersonPhotos::store($person, $request->file('photo'));
+        }
 
         return redirect()
             ->route('people.show', $person)
@@ -69,7 +77,7 @@ class PersonController extends Controller
                 'phone' => $person->phone,
                 'email' => $person->email,
                 'notes' => $person->notes,
-                'updated_at' => $person->updated_at?->toIso8601String(),
+                'photo_url' => PersonPhotos::url($person->photo_path),
             ],
         ]);
     }
@@ -85,6 +93,7 @@ class PersonController extends Controller
                 'phone' => $person->phone,
                 'email' => $person->email,
                 'notes' => $person->notes,
+                'photo_url' => PersonPhotos::url($person->photo_path),
             ],
         ]);
     }
@@ -93,7 +102,15 @@ class PersonController extends Controller
     {
         $this->authorize('update', $person);
 
-        $person->update($request->validated());
+        $person->update($request->safe()->except(['photo', 'remove_photo']));
+
+        if ($request->hasFile('photo')) {
+            PersonPhotos::store($person, $request->file('photo'));
+        } elseif ($request->boolean('remove_photo')) {
+            PersonPhotos::forget($person->photo_path);
+            $person->photo_path = null;
+            $person->save();
+        }
 
         return redirect()
             ->route('people.show', $person)

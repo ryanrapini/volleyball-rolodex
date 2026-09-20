@@ -4,7 +4,7 @@ import DangerButton from '@/Components/DangerButton.vue';
 import Modal from '@/Components/Modal.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
     person: {
@@ -16,6 +16,15 @@ const props = defineProps({
 const confirmingDeletion = ref(false);
 
 const form = useForm({});
+
+const initials = computed(() =>
+    props.person.name
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0].toUpperCase())
+        .join(''),
+);
 
 const confirmDeletion = () => {
     confirmingDeletion.value = true;
@@ -40,7 +49,10 @@ const deletePerson = () => {
         <template #header>
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                    <Link :href="route('people.index')" class="font-mono text-xs font-semibold uppercase tracking-widest text-ink/60 hover:text-ink">
+                    <Link
+                        :href="route('people.index')"
+                        class="font-mono text-xs font-semibold uppercase tracking-widest text-ink/60 hover:text-ink"
+                    >
                         ← All people
                     </Link>
                     <h1 class="mt-1 font-sans text-2xl font-bold uppercase tracking-tight text-ink">
@@ -55,35 +67,64 @@ const deletePerson = () => {
         </template>
 
         <div class="mx-auto max-w-2xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-            <!-- Contact -->
+            <!-- Photo and contact -->
             <section class="card p-6 shadow-print-sm">
-                <h2 class="label">Contact</h2>
-
-                <dl class="mt-3 space-y-3">
-                    <div class="flex flex-wrap items-baseline gap-x-3">
-                        <dt class="font-mono text-xs uppercase tracking-widest text-ink/50">
-                            Phone
-                        </dt>
-                        <dd class="font-sans text-base text-ink">
-                            <a v-if="person.phone" :href="`tel:${person.phone}`" class="link">
-                                {{ person.phone }}
-                            </a>
-                            <span v-else class="font-mono text-xs text-ink/40">Not recorded</span>
-                        </dd>
+                <div class="flex flex-wrap gap-6">
+                    <img
+                        v-if="person.photo_url"
+                        :src="person.photo_url"
+                        :alt="person.name"
+                        class="h-40 w-40 shrink-0 border-2 border-ink object-cover shadow-print-sm"
+                    />
+                    <div
+                        v-else
+                        class="flex h-40 w-40 shrink-0 items-center justify-center border-2 border-ink bg-riso-pink/20 font-mono text-3xl font-semibold text-ink/50"
+                    >
+                        {{ initials }}
                     </div>
 
-                    <div class="flex flex-wrap items-baseline gap-x-3">
-                        <dt class="font-mono text-xs uppercase tracking-widest text-ink/50">
-                            Email
-                        </dt>
-                        <dd class="font-sans text-base text-ink">
-                            <a v-if="person.email" :href="`mailto:${person.email}`" class="link">
-                                {{ person.email }}
-                            </a>
-                            <span v-else class="font-mono text-xs text-ink/40">Not recorded</span>
-                        </dd>
+                    <div class="min-w-0 flex-1">
+                        <h2 class="label">Contact</h2>
+
+                        <dl class="mt-3 space-y-3">
+                            <div>
+                                <dt class="font-mono text-xs uppercase tracking-widest text-ink/50">
+                                    Phone
+                                </dt>
+                                <dd class="font-sans text-base text-ink">
+                                    <a
+                                        v-if="person.phone"
+                                        :href="`tel:${person.phone}`"
+                                        class="link"
+                                    >
+                                        {{ person.phone }}
+                                    </a>
+                                    <span v-else class="font-mono text-xs text-ink/40">
+                                        Not recorded
+                                    </span>
+                                </dd>
+                            </div>
+
+                            <div>
+                                <dt class="font-mono text-xs uppercase tracking-widest text-ink/50">
+                                    Email
+                                </dt>
+                                <dd class="break-all font-sans text-base text-ink">
+                                    <a
+                                        v-if="person.email"
+                                        :href="`mailto:${person.email}`"
+                                        class="link"
+                                    >
+                                        {{ person.email }}
+                                    </a>
+                                    <span v-else class="font-mono text-xs text-ink/40">
+                                        Not recorded
+                                    </span>
+                                </dd>
+                            </div>
+                        </dl>
                     </div>
-                </dl>
+                </div>
             </section>
 
             <!-- Notes -->
@@ -96,16 +137,15 @@ const deletePerson = () => {
                 >
                     {{ person.notes }}
                 </p>
-                <p v-else class="mt-3 font-mono text-xs text-ink/40">
-                    No notes yet.
-                </p>
+                <p v-else class="mt-3 font-mono text-xs text-ink/40">No notes yet.</p>
             </section>
 
             <!-- Danger zone -->
             <section class="card p-6 shadow-print-sm">
                 <h2 class="label">Delete</h2>
                 <p class="mt-2 font-mono text-xs text-ink/60">
-                    Removing {{ person.name }} deletes their record for good. This can't be undone.
+                    Removing {{ person.name }} deletes their record and photo for good. This can't
+                    be undone.
                 </p>
 
                 <DangerButton class="mt-4" @click="confirmDeletion">

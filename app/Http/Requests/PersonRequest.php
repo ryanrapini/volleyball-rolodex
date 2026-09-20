@@ -21,6 +21,8 @@ class PersonRequest extends FormRequest
             'phone' => ['nullable', 'string', 'max:40'],
             'email' => ['nullable', 'string', 'email', 'max:255'],
             'notes' => ['nullable', 'string', 'max:10000'],
+            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'remove_photo' => ['nullable', 'boolean'],
         ];
     }
 }

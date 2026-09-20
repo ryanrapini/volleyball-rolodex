@@ -34,6 +34,14 @@ watch(term, (value) => {
 const clearSearch = () => {
     term.value = '';
 };
+
+const initials = (name) =>
+    name
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0].toUpperCase())
+        .join('');
 </script>
 
 <template>
@@ -110,26 +118,47 @@ const clearSearch = () => {
                 <li v-for="person in people.data" :key="person.id">
                     <Link
                         :href="route('people.show', person.id)"
-                        class="card block h-full p-4 transition-transform duration-100 hover:-translate-y-0.5 hover:shadow-print-sm"
+                        class="card flex h-full gap-3 p-4 transition-transform duration-100 hover:-translate-y-0.5 hover:shadow-print-sm"
                     >
-                        <p class="font-sans text-base font-bold leading-tight text-ink">
-                            {{ person.name }}
-                        </p>
-
-                        <p v-if="person.phone" class="mt-2 font-mono text-xs text-ink/80">
-                            {{ person.phone }}
-                        </p>
-
-                        <p v-if="person.email" class="mt-0.5 break-all font-mono text-xs text-ink/60">
-                            {{ person.email }}
-                        </p>
-
-                        <p
-                            v-if="person.notes_excerpt"
-                            class="mt-3 border-t-2 border-ink/10 pt-2 font-mono text-[0.7rem] leading-relaxed text-ink/60"
+                        <img
+                            v-if="person.photo_url"
+                            :src="person.photo_url"
+                            alt=""
+                            class="h-14 w-14 shrink-0 border-2 border-ink object-cover"
+                        />
+                        <span
+                            v-else
+                            class="flex h-14 w-14 shrink-0 items-center justify-center border-2 border-ink bg-riso-pink/20 font-mono text-sm font-semibold text-ink/60"
                         >
-                            {{ person.notes_excerpt }}
-                        </p>
+                            {{ initials(person.name) }}
+                        </span>
+
+                        <span class="min-w-0">
+                            <span class="block font-sans text-base font-bold leading-tight text-ink">
+                                {{ person.name }}
+                            </span>
+
+                            <span
+                                v-if="person.phone"
+                                class="mt-2 block font-mono text-xs text-ink/80"
+                            >
+                                {{ person.phone }}
+                            </span>
+
+                            <span
+                                v-if="person.email"
+                                class="mt-0.5 block break-all font-mono text-xs text-ink/60"
+                            >
+                                {{ person.email }}
+                            </span>
+
+                            <span
+                                v-if="person.notes_excerpt"
+                                class="mt-3 block border-t-2 border-ink/10 pt-2 font-mono text-[0.7rem] leading-relaxed text-ink/60"
+                            >
+                                {{ person.notes_excerpt }}
+                            </span>
+                        </span>
                     </Link>
                 </li>
             </ul>
