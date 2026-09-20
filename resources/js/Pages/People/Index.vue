@@ -3,6 +3,7 @@ import BulkAnswersModal from '@/Components/BulkAnswersModal.vue';
 import ButtonLink from '@/Components/ButtonLink.vue';
 import QuickEditPersonModal from '@/Components/QuickEditPersonModal.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { canDial, telHref } from '@/dial';
 import { Head, Link, router } from '@inertiajs/vue3';
 import Avatar from 'primevue/avatar';
 import Badge from 'primevue/badge';
@@ -185,7 +186,7 @@ const clearSearch = () => {
             </div>
         </template>
 
-        <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <div class="mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
             <IconField>
                 <InputIcon class="pi pi-search" />
                 <InputText
@@ -296,7 +297,7 @@ const clearSearch = () => {
             </Card>
 
             <!-- The list -->
-            <ul v-else class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <ul v-else class="mt-4 grid gap-3 sm:mt-8 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
                 <li v-for="person in people.data" :key="person.id" class="relative">
                     <Link
                         :href="route('people.show', person.id)"
@@ -393,6 +394,20 @@ const clearSearch = () => {
                     </span>
 
                     <div v-if="!selecting" class="absolute bottom-3 right-3 z-20 flex gap-1.5">
+                        <ButtonLink
+                            v-if="canDial(person.phone)"
+                            :href="telHref(person.phone)"
+                            external
+                            severity="secondary"
+                            outlined
+                            rounded
+                            size="small"
+                            :title="`Call ${person.name}`"
+                            :aria-label="`Call ${person.name}`"
+                        >
+                            <i class="pi pi-phone" />
+                        </ButtonLink>
+
                         <Button
                             icon="pi pi-pencil"
                             severity="secondary"

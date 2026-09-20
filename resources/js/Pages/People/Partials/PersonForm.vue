@@ -79,7 +79,7 @@ const addAnyway = () => {
 </script>
 
 <template>
-    <form class="space-y-5" @submit.prevent="$emit('submit')">
+    <form class="space-y-4 sm:space-y-5" @submit.prevent="$emit('submit')">
         <Message v-if="form.errors.duplicate" severity="warn" :closable="false">
             <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <span>{{ form.errors.duplicate }}</span>

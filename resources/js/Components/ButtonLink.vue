@@ -18,6 +18,12 @@ const props = defineProps({
         type: String,
         required: true,
     },
+    // tel: and sms: links have to stay plain anchors — Inertia would try to
+    // handle them as a page visit.
+    external: {
+        type: Boolean,
+        default: false,
+    },
     severity: {
         type: String,
         default: null,
@@ -27,6 +33,10 @@ const props = defineProps({
         default: false,
     },
     text: {
+        type: Boolean,
+        default: false,
+    },
+    rounded: {
         type: Boolean,
         default: false,
     },
@@ -63,6 +73,10 @@ const variants = computed(() => {
         passed.text = true;
     }
 
+    if (props.rounded) {
+        passed.rounded = true;
+    }
+
     return passed;
 });
 
@@ -75,7 +89,16 @@ const rest = computed(() => {
 
 <template>
     <Button v-slot="{ class: classes, a11yAttrs }" asChild v-bind="variants">
+        <a
+            v-if="external"
+            :href="href"
+            :class="[classes, attrs.class]"
+            v-bind="{ ...rest, ...a11yAttrs }"
+        >
+            <slot>{{ label }}</slot>
+        </a>
         <Link
+            v-else
             :href="href"
             :class="[classes, attrs.class]"
             v-bind="{ ...rest, ...a11yAttrs }"

@@ -4,6 +4,7 @@ import DangerButton from '@/Components/DangerButton.vue';
 import Modal from '@/Components/Modal.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { canDial, smsHref, telHref } from '@/dial';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import Avatar from 'primevue/avatar';
 import Button from 'primevue/button';
@@ -72,17 +73,17 @@ const deletePerson = () => {
             </div>
         </template>
 
-        <div class="mx-auto max-w-3xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+        <div class="mx-auto max-w-3xl space-y-3 px-4 py-4 sm:space-y-6 sm:px-6 sm:py-8 lg:px-8">
             <!-- Photo and contact -->
             <Card>
                 <template #content>
-                    <div class="flex flex-wrap gap-6">
+                    <div class="flex flex-wrap gap-4 sm:gap-6">
                         <Avatar
                             v-if="person.photo_url"
                             :image="person.photo_url"
                             shape="square"
                             size="xlarge"
-                            class="h-40 w-40"
+                            class="h-24 w-24 sm:h-40 sm:w-40"
                             :pt="{ image: { style: 'object-fit: cover; width: 100%; height: 100%' } }"
                         />
                         <Avatar
@@ -90,7 +91,7 @@ const deletePerson = () => {
                             :label="initials"
                             shape="square"
                             size="xlarge"
-                            class="h-40 w-40 bg-gray-100 text-3xl text-gray-500"
+                            class="h-24 w-24 bg-gray-100 text-2xl text-gray-500 sm:h-40 sm:w-40 sm:text-3xl"
                         />
 
                         <div class="min-w-0 flex-1">
@@ -104,13 +105,34 @@ const deletePerson = () => {
                                         Phone
                                     </dt>
                                     <dd class="text-base text-gray-900">
-                                        <a
-                                            v-if="person.phone"
-                                            :href="`tel:${person.phone}`"
-                                            class="text-blue-600 hover:underline"
-                                        >
-                                            {{ person.phone }}
-                                        </a>
+                                        <template v-if="person.phone">
+                                            <span class="block">{{ person.phone }}</span>
+
+                                            <div
+                                                v-if="canDial(person.phone)"
+                                                class="mt-2 flex flex-wrap gap-2"
+                                            >
+                                                <ButtonLink
+                                                    :href="telHref(person.phone)"
+                                                    external
+                                                    size="small"
+                                                >
+                                                    <i class="pi pi-phone mr-2" />
+                                                    Call
+                                                </ButtonLink>
+
+                                                <ButtonLink
+                                                    :href="smsHref(person.phone)"
+                                                    external
+                                                    severity="secondary"
+                                                    outlined
+                                                    size="small"
+                                                >
+                                                    <i class="pi pi-comment mr-2" />
+                                                    Text
+                                                </ButtonLink>
+                                            </div>
+                                        </template>
                                         <span v-else class="text-sm text-gray-400">
                                             Not recorded
                                         </span>
