@@ -6,31 +6,34 @@
  * Run as the deploying user. The file lives in shared/ so every release symlinks
  * to the same one and no release ever needs secrets copied into it.
  *
- * Mail credentials are lifted from the sibling app that already has a working
- * Mailgun setup, so nothing has to be retyped — and nothing is echoed here.
+ * Secrets are lifted from the sibling app that already has a working Mailgun
+ * setup, and from the local checkout for the OpenAI key, so nothing has to be
+ * retyped — and nothing is echoed here.
  */
 
 $app = '/srv/http/rolodex.ryanrapini.com';
 $envPath = $app.'/shared/.env';
 $mailSource = '/home/ryan/family-tree/.env';
+$localSource = '/home/ryan/volleyball-rolodex/.env';
 
 if (file_exists($envPath) && ! in_array('--force', $argv, true)) {
     fwrite(STDERR, "Refusing to overwrite existing {$envPath} (pass --force to replace).\n");
+    fwrite(STDERR, "To add a key without regenerating APP_KEY, use scripts/add-env-keys.php instead.\n");
     exit(1);
 }
 
 /**
- * Read the mail keys we need out of another app's env file.
+ * Read just the named keys out of an env file.
  *
+ * @param  array<int, string>  $wanted
  * @return array<string, string>
  */
-function mailValues(string $path): array
+function envValues(string $path, array $wanted): array
 {
     if (! is_readable($path)) {
         return [];
     }
 
-    $wanted = ['MAIL_DOMAIN', 'MAILGUN_DOMAIN', 'MAILGUN_SECRET', 'MAILGUN_ENDPOINT', 'MAIL_FROM_ADDRESS'];
     $values = [];
 
     foreach (file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
@@ -52,13 +55,19 @@ function mailValues(string $path): array
 // A Laravel-shaped key: base64 of 32 random bytes.
 $key = 'base64:'.base64_encode(random_bytes(32));
 
-$mail = mailValues($mailSource);
+$mail = envValues($mailSource, [
+    'MAIL_DOMAIN', 'MAILGUN_DOMAIN', 'MAILGUN_SECRET', 'MAILGUN_ENDPOINT', 'MAIL_FROM_ADDRESS',
+]);
 $mailDomain = $mail['MAILGUN_DOMAIN'] ?? $mail['MAIL_DOMAIN'] ?? '';
 $mailSecret = $mail['MAILGUN_SECRET'] ?? '';
 $mailEndpoint = $mail['MAILGUN_ENDPOINT'] ?? 'api.mailgun.net';
 $mailFrom = $mail['MAIL_FROM_ADDRESS'] ?? 'hello@ryanrapini.com';
 
 $hasMailgun = $mailDomain !== '' && $mailSecret !== '';
+
+$openAi = envValues($localSource, ['OPENAI_API_KEY', 'OPENAI_MODEL', 'OPENAI_TRANSCRIBE_MODEL']);
+$openAiKey = $openAi['OPENAI_API_KEY'] ?? '';
+$hasOpenAi = $openAiKey !== '';
 
 $mailBlock = $hasMailgun
     ? <<<MAIL
@@ -74,6 +83,12 @@ $mailBlock = $hasMailgun
         MAIL_FROM_ADDRESS="hello@ryanrapini.com"
         MAIL_FROM_NAME="Volleyball Rolodex"
         MAIL;
+
+$openAiBlock = $hasOpenAi
+    ? "OPENAI_API_KEY={$openAiKey}\n"
+        ."OPENAI_MODEL=".($openAi['OPENAI_MODEL'] ?? 'gpt-4o-mini')."\n"
+        .'OPENAI_TRANSCRIBE_MODEL='.($openAi['OPENAI_TRANSCRIBE_MODEL'] ?? 'whisper-1')
+    : "# No OPENAI_API_KEY in the local checkout — the assistant drawer stays disabled.\n# OPENAI_API_KEY=";
 
 // Heredocs indent to the closing marker; strip the leading whitespace again.
 $mailBlock = implode("\n", array_map(
@@ -113,12 +128,15 @@ SESSION_PATH=/
 SESSION_DOMAIN=null
 
 BROADCAST_CONNECTION=log
-# avatars are served from /storage, so the public disk is the default here
+# photos are served from /storage, so the public disk is the default here
 FILESYSTEM_DISK=public
 QUEUE_CONNECTION=database
 CACHE_STORE=database
 
 {$mailBlock}
+
+# Powers the assistant drawer (chat + voice).
+{$openAiBlock}
 
 VITE_APP_NAME="\${APP_NAME}"
 ENV;
@@ -133,4 +151,5 @@ chmod($envPath, 0640);
 echo "wrote {$envPath}\n";
 echo 'mail transport: '.($hasMailgun ? "mailgun ({$mailDomain})" : 'log — Mailgun values not found')."\n";
 echo 'mail keys imported: '.($mail === [] ? 'none' : implode(', ', array_keys($mail)))."\n";
+echo 'assistant: '.($hasOpenAi ? 'OpenAI key imported' : 'no OpenAI key found — drawer disabled')."\n";
 echo "APP_KEY={$key}\n";

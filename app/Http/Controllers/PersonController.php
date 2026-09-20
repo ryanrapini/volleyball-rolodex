@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\CategoryType;
 use App\Http\Requests\PersonRequest;
 use App\Models\Category;
 use App\Models\CategoryOption;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -20,17 +22,25 @@ class PersonController extends Controller
 {
     use AuthorizesRequests;
 
+    /** Values a yes/no chip can send. */
+    private const YES = 'yes';
+
+    private const NO = 'no';
+
     /**
      * Home screen for the whole app: search the rolodex and scroll the list.
      */
     public function index(Request $request): Response
     {
         $term = trim((string) $request->query('q', ''));
+        $categories = $request->user()->categories()->with('options')->get();
+        $filters = $this->readFilters($request, $categories);
 
         $people = $request->user()->people()
             ->when($term !== '', fn (Builder $query) => $query->where(
                 fn (Builder $search) => $this->applySearch($search, $term),
             ))
+            ->when($filters !== [], fn (Builder $query) => $this->applyFilters($query, $filters))
             ->with(['categoryValues.category', 'categoryValues.option'])
             ->orderBy('name')
             ->paginate(60)
@@ -47,7 +57,14 @@ class PersonController extends Controller
 
         return Inertia::render('People/Index', [
             'people' => $people,
-            'filters' => ['q' => $term],
+            'filters' => [
+                'q' => $term,
+                'categories' => array_map(
+                    fn (array $values): array => array_values($values),
+                    $filters,
+                ),
+            ],
+            'filterOptions' => $this->filterOptions($categories, $filters),
         ]);
     }
 
@@ -151,7 +168,110 @@ class PersonController extends Controller
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, Category>  $categories
+     * Read the chip selections out of the query string, keeping only ids and
+     * values this user's categories actually offer. Ignoring junk here means a
+     * hand-edited URL can never widen or crash a query.
+     *
+     * @param  Collection<int, Category>  $categories
+     * @return array<string, array<int, string>>
+     */
+    private function readFilters(Request $request, Collection $categories): array
+    {
+        $submitted = $request->query('f');
+
+        if (! is_array($submitted)) {
+            return [];
+        }
+
+        $filters = [];
+
+        foreach ($submitted as $categoryId => $values) {
+            $category = $categories->firstWhere('id', (string) $categoryId);
+
+            if (! $category instanceof Category) {
+                continue;
+            }
+
+            $allowed = $category->type === CategoryType::Boolean
+                ? [self::YES, self::NO]
+                : $category->options->pluck('id')->all();
+
+            $kept = array_values(array_unique(array_filter(
+                array_map('trim', explode(',', is_array($values) ? implode(',', $values) : (string) $values)),
+                fn (string $value): bool => in_array($value, $allowed, true),
+            )));
+
+            if ($kept !== []) {
+                $filters[$category->getKey()] = $kept;
+            }
+        }
+
+        return $filters;
+    }
+
+    /**
+     * Each selected category narrows the list; within one category, matching any
+     * of the chosen chips is enough.
+     *
+     * @param  Builder<Person>  $query
+     * @param  array<string, array<int, string>>  $filters
+     */
+    private function applyFilters(Builder $query, array $filters): void
+    {
+        foreach ($filters as $categoryId => $values) {
+            $yesNo = array_intersect($values, [self::YES, self::NO]);
+            $optionIds = array_diff($values, [self::YES, self::NO]);
+
+            $query->where(function (Builder $match) use ($categoryId, $yesNo, $optionIds): void {
+                foreach ($yesNo as $value) {
+                    $match->orWhereHas('categoryValues', fn (Builder $value_) => $value_
+                        ->where('category_id', $categoryId)
+                        ->where('value', $value === self::YES));
+                }
+
+                if ($optionIds !== []) {
+                    $match->orWhereHas('categoryValues', fn (Builder $value_) => $value_
+                        ->where('category_id', $categoryId)
+                        ->whereIn('category_option_id', array_values($optionIds)));
+                }
+            });
+        }
+    }
+
+    /**
+     * The chips to render, with their current state.
+     *
+     * @param  Collection<int, Category>  $categories
+     * @param  array<string, array<int, string>>  $filters
+     * @return array<int, array<string, mixed>>
+     */
+    private function filterOptions(Collection $categories, array $filters): array
+    {
+        return $categories
+            ->map(fn (Category $category): array => [
+                'id' => $category->id,
+                'name' => $category->name,
+                'type' => $category->type->value,
+                'chips' => $category->type === CategoryType::Boolean
+                    ? [
+                        ['value' => self::YES, 'label' => 'Yes'],
+                        ['value' => self::NO, 'label' => 'No'],
+                    ]
+                    : $category->options
+                        ->map(fn (CategoryOption $option): array => [
+                            'value' => $option->id,
+                            'label' => $option->label,
+                        ])
+                        ->values()
+                        ->all(),
+                'selected' => $filters[$category->getKey()] ?? [],
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  Collection<int, Category>  $categories
      * @return array<int, array<string, mixed>>
      */
     private function presentCategories($categories): array

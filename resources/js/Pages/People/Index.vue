@@ -2,7 +2,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
     people: {
@@ -13,27 +13,31 @@ const props = defineProps({
         type: Object,
         default: () => ({}),
     },
+    filterOptions: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const term = ref(props.filters.q ?? '');
-let debounce;
 
-// Live search: the whole point of this screen is finding someone fast.
-watch(term, (value) => {
-    clearTimeout(debounce);
+/** categoryId => array of selected values, held locally so chips feel instant. */
+const selected = ref(
+    Object.fromEntries(
+        props.filterOptions.map((category) => [
+            category.id,
+            [...(props.filters.categories?.[category.id] ?? [])],
+        ]),
+    ),
+);
 
-    debounce = setTimeout(() => {
-        router.get(
-            route('people.index'),
-            value ? { q: value } : {},
-            { preserveState: true, preserveScroll: true, replace: true },
-        );
-    }, 250);
-});
+const showFilters = ref(
+    Object.values(selected.value).some((values) => values.length > 0),
+);
 
-const clearSearch = () => {
-    term.value = '';
-};
+const activeCount = computed(() =>
+    Object.values(selected.value).reduce((total, values) => total + values.length, 0),
+);
 
 const initials = (name) =>
     name
@@ -42,6 +46,57 @@ const initials = (name) =>
         .slice(0, 2)
         .map((part) => part[0].toUpperCase())
         .join('');
+
+const visit = () => {
+    const params = new URLSearchParams();
+
+    if (term.value) {
+        params.append('q', term.value);
+    }
+
+    Object.entries(selected.value).forEach(([categoryId, values]) => {
+        if (values.length) {
+            params.append(`f[${categoryId}]`, values.join(','));
+        }
+    });
+
+    const query = params.toString();
+    const url = query ? `${route('people.index')}?${query}` : route('people.index');
+
+    router.get(url, {}, { preserveState: true, preserveScroll: true, replace: true });
+};
+
+// Live search: the whole point of this screen is finding someone fast.
+let debounce;
+watch(term, () => {
+    clearTimeout(debounce);
+    debounce = setTimeout(visit, 250);
+});
+
+const toggleChip = (categoryId, value) => {
+    const values = selected.value[categoryId];
+    const index = values.indexOf(value);
+
+    if (index === -1) {
+        values.push(value);
+    } else {
+        values.splice(index, 1);
+    }
+
+    visit();
+};
+
+const clearFilters = () => {
+    Object.keys(selected.value).forEach((categoryId) => {
+        selected.value[categoryId] = [];
+    });
+
+    visit();
+};
+
+const clearSearch = () => {
+    term.value = '';
+};
 </script>
 
 <template>
@@ -90,16 +145,79 @@ const initials = (name) =>
                 </div>
             </div>
 
+            <!-- Chips -->
+            <div v-if="filterOptions.length" class="mt-5">
+                <div class="flex flex-wrap items-center gap-2">
+                    <button
+                        type="button"
+                        class="btn btn-secondary px-3 py-1.5 text-xs"
+                        :aria-expanded="showFilters"
+                        @click="showFilters = !showFilters"
+                    >
+                        {{ showFilters ? 'Hide filters' : 'Filters' }}
+                        <span v-if="activeCount">{{ activeCount }}</span>
+                    </button>
+
+                    <button
+                        v-if="activeCount"
+                        type="button"
+                        class="link text-xs"
+                        @click="clearFilters"
+                    >
+                        Clear filters
+                    </button>
+                </div>
+
+                <div v-if="showFilters" class="mt-4 space-y-4 border-l-4 border-riso-blue/30 pl-3">
+                    <div v-for="category in filterOptions" :key="category.id">
+                        <p class="font-mono text-[0.7rem] uppercase tracking-widest text-ink/50">
+                            {{ category.name }}
+                        </p>
+
+                        <div class="mt-1.5 flex flex-wrap gap-1.5">
+                            <button
+                                v-for="chip in category.chips"
+                                :key="chip.value"
+                                type="button"
+                                class="chip"
+                                :class="{
+                                    'chip-active': selected[category.id].includes(chip.value),
+                                }"
+                                :aria-pressed="selected[category.id].includes(chip.value)"
+                                @click="toggleChip(category.id, chip.value)"
+                            >
+                                {{ chip.label }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Empty states -->
             <div v-if="people.data.length === 0" class="card mt-8 p-8 text-center shadow-print-sm">
-                <template v-if="term">
-                    <p class="font-sans text-lg font-bold text-ink">Nobody matches “{{ term }}”.</p>
+                <template v-if="term || activeCount">
+                    <p class="font-sans text-lg font-bold text-ink">Nobody matches that.</p>
                     <p class="mt-2 font-mono text-xs text-ink/60">
-                        Try a shorter search, or clear it to see everyone.
+                        Try a shorter search, or loosen the filters.
                     </p>
-                    <button type="button" class="btn btn-secondary mt-5" @click="clearSearch">
-                        Clear search
-                    </button>
+                    <div class="mt-5 flex flex-wrap justify-center gap-3">
+                        <button
+                            v-if="activeCount"
+                            type="button"
+                            class="btn btn-secondary"
+                            @click="clearFilters"
+                        >
+                            Clear filters
+                        </button>
+                        <button
+                            v-if="term"
+                            type="button"
+                            class="btn btn-secondary"
+                            @click="clearSearch"
+                        >
+                            Clear search
+                        </button>
+                    </div>
                 </template>
 
                 <template v-else>
@@ -159,10 +277,7 @@ const initials = (name) =>
                                 {{ person.notes_excerpt }}
                             </span>
 
-                            <span
-                                v-if="person.tags.length"
-                                class="mt-3 flex flex-wrap gap-1.5"
-                            >
+                            <span v-if="person.tags.length" class="mt-3 flex flex-wrap gap-1.5">
                                 <span v-for="tag in person.tags" :key="tag" class="tag">
                                     {{ tag }}
                                 </span>

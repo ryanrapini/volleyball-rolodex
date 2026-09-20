@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AiChatController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\PersonController;
 use App\Http\Controllers\ProfileController;
@@ -22,6 +23,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::resource('people', PersonController::class);
     Route::resource('categories', CategoryController::class)->except('show');
+
+    Route::post('/ai/chat', [AiChatController::class, 'chat'])->name('ai.chat');
+    Route::post('/ai/transcribe', [AiChatController::class, 'transcribe'])->name('ai.transcribe');
 });
 
 Route::middleware('auth')->group(function () {

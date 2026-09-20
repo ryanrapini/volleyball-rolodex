@@ -1,10 +1,12 @@
 <script setup>
 import { ref } from 'vue';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
+import AssistantDrawer from '@/Components/AssistantDrawer.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import NavLink from '@/Components/NavLink.vue';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
+import { open as assistantOpen } from '@/assistant';
 import { Link, usePage } from '@inertiajs/vue3';
 
 const showingNavigationDropdown = ref(false);
@@ -38,6 +40,14 @@ const page = usePage();
                     </div>
 
                     <div class="hidden sm:ms-6 sm:flex sm:items-center">
+                        <button
+                            type="button"
+                            class="btn btn-secondary px-3 py-1.5 text-xs"
+                            @click="assistantOpen = true"
+                        >
+                            🎙 Assistant
+                        </button>
+
                         <div class="relative ms-3">
                             <Dropdown align="right" width="48">
                                 <template #trigger>
@@ -151,6 +161,17 @@ const page = usePage();
                     </div>
 
                     <div class="mt-3 space-y-1">
+                        <button
+                            type="button"
+                            class="block w-full border-s-4 border-transparent py-2 ps-3 text-start font-mono text-xs font-semibold uppercase tracking-widest text-ink/60 hover:border-riso-blue/40 hover:bg-paper hover:text-ink"
+                            @click="
+                                assistantOpen = true;
+                                showingNavigationDropdown = false;
+                            "
+                        >
+                            Assistant
+                        </button>
+
                         <ResponsiveNavLink :href="route('profile.edit')">
                             Profile
                         </ResponsiveNavLink>
@@ -180,5 +201,7 @@ const page = usePage();
         <main>
             <slot />
         </main>
+
+        <AssistantDrawer />
     </div>
 </template>
