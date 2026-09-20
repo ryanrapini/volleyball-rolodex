@@ -135,6 +135,53 @@ test('the popup reports validation problems instead of saving', function () {
     expect($person->refresh()->name)->toBe('Marcus Hale');
 });
 
+test('saving only categories leaves the core details alone', function () {
+    [$user, $c] = quickEditFixture();
+
+    $person = Person::factory()->for($user)->create([
+        'name' => 'Marcus Hale',
+        'phone' => '555-0100',
+        'email' => 'marcus@example.com',
+        'notes' => 'Keep these notes.',
+    ]);
+
+    // The tags popup sends the name, which the endpoint requires, and the
+    // answers — and deliberately nothing else.
+    $this->actingAs($user)
+        ->postJson(route('people.quick-update', $person), [
+            'name' => 'Marcus Hale',
+            'answers' => [['category_id' => $c['canSet']->id, 'value' => true]],
+        ])
+        ->assertOk();
+
+    $person->refresh();
+
+    expect($person->phone)->toBe('555-0100')
+        ->and($person->email)->toBe('marcus@example.com')
+        ->and($person->notes)->toBe('Keep these notes.')
+        ->and($person->categoryValues()->sole()->value)->toBeTrue();
+});
+
+test('saving only details leaves the categories alone', function () {
+    [$user, $c] = quickEditFixture();
+
+    $person = Person::factory()->for($user)->create(['name' => 'Dana Okafor']);
+    $person->categoryValues()->create(['category_id' => $c['canSet']->id, 'value' => true]);
+    $person->categoryValues()->create(['category_id' => $c['level']->id, 'category_option_id' => $c['bb']->id]);
+
+    $this->actingAs($user)
+        ->postJson(route('people.quick-update', $person), [
+            'name' => 'Dana Okafor',
+            'phone' => '555-0111',
+        ])
+        ->assertOk();
+
+    $person->refresh();
+
+    expect($person->phone)->toBe('555-0111')
+        ->and($person->categoryValues()->count())->toBe(2);
+});
+
 test('another user can neither open nor save your person', function () {
     [$user, $c] = quickEditFixture();
     $person = Person::factory()->for($user)->create(['name' => 'Marcus Hale']);

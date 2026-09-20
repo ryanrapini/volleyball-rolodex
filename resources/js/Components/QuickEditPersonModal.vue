@@ -2,12 +2,21 @@
 import Modal from '@/Components/Modal.vue';
 import PersonForm from '@/Pages/People/Partials/PersonForm.vue';
 import { useForm } from '@inertiajs/vue3';
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
+/*
+ * One popup, two jobs. `mode` decides which half of the form it shows:
+ *   'details' — photo, name, phone, email, notes
+ *   'tags'    — the category answers only
+ */
 const props = defineProps({
     personId: {
         type: String,
         default: null,
+    },
+    mode: {
+        type: String,
+        default: 'details',
     },
 });
 
@@ -26,6 +35,16 @@ const form = useForm({
     photo: null,
     remove_photo: false,
     answers: {},
+});
+
+const isTags = computed(() => props.mode === 'tags');
+
+const heading = computed(() => {
+    if (!form.name) {
+        return isTags.value ? 'Categories' : 'Edit person';
+    }
+
+    return isTags.value ? `Categories for ${form.name}` : `Edit ${form.name}`;
 });
 
 const xsrfToken = () => {
@@ -96,14 +115,19 @@ watch(
 const submit = async () => {
     const body = new FormData();
 
+    // The name is always sent: the endpoint requires it, and sending it
+    // unchanged keeps this a no-op for the fields this popup does not show.
     body.append('name', form.name ?? '');
-    body.append('phone', form.phone ?? '');
-    body.append('email', form.email ?? '');
-    body.append('notes', form.notes ?? '');
-    body.append('remove_photo', form.remove_photo ? '1' : '0');
 
-    if (form.photo) {
-        body.append('photo', form.photo);
+    if (!isTags.value) {
+        body.append('phone', form.phone ?? '');
+        body.append('email', form.email ?? '');
+        body.append('notes', form.notes ?? '');
+        body.append('remove_photo', form.remove_photo ? '1' : '0');
+
+        if (form.photo) {
+            body.append('photo', form.photo);
+        }
     }
 
     // Answers go out as a list, so an entry always carries its category id even
@@ -165,7 +189,7 @@ const submit = async () => {
     <Modal :show="personId !== null" max-width="2xl" @close="close">
         <div class="max-h-[85vh] overflow-y-auto p-6">
             <h2 class="font-sans text-lg font-bold uppercase tracking-tight text-ink">
-                {{ form.name ? `Edit ${form.name}` : 'Edit person' }}
+                {{ heading }}
             </h2>
 
             <p v-if="problem" class="mt-3 inline-block bg-riso-pink px-2 py-1 font-mono text-xs text-ink">
@@ -181,7 +205,9 @@ const submit = async () => {
                     :form="form"
                     :categories="categories"
                     :current-photo-url="currentPhoto"
-                    submit-label="Save changes"
+                    :show-core="!isTags"
+                    :show-answers="isTags"
+                    :submit-label="isTags ? 'Save categories' : 'Save details'"
                     @submit="submit"
                     @cancel="close"
                 />

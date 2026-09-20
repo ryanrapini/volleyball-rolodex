@@ -50,9 +50,11 @@ const initials = (name) =>
         .join('');
 
 const editingId = ref(null);
+const editingMode = ref('details');
 
-const openQuickEdit = (id) => {
+const openQuickEdit = (id, mode = 'details') => {
     editingId.value = id;
+    editingMode.value = mode;
 };
 
 const onQuickEditSaved = () => {
@@ -363,21 +365,33 @@ const clearSearch = () => {
                         ✓
                     </span>
 
-                    <button
-                        v-if="!selecting"
-                        type="button"
-                        class="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center border-2 border-ink bg-white text-sm leading-none shadow-print-sm transition-all duration-100 hover:translate-x-[1px] hover:translate-y-[1px] hover:bg-riso-pink hover:shadow-none"
-                        :title="`Quick edit ${person.name}`"
-                        :aria-label="`Quick edit ${person.name}`"
-                        @click="openQuickEdit(person.id)"
-                    >
-                        <span aria-hidden="true">✎</span>
-                    </button>
+                    <div v-if="!selecting" class="absolute bottom-2 right-2 flex gap-1.5">
+                        <button
+                            type="button"
+                            class="flex h-8 w-8 items-center justify-center border-2 border-ink bg-white text-sm leading-none shadow-print-sm transition-all duration-100 hover:translate-x-[1px] hover:translate-y-[1px] hover:bg-riso-pink hover:shadow-none"
+                            :title="`Edit details for ${person.name}`"
+                            :aria-label="`Edit details for ${person.name}`"
+                            @click="openQuickEdit(person.id, 'details')"
+                        >
+                            <span aria-hidden="true">✎</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            class="flex h-8 w-8 items-center justify-center border-2 border-ink bg-white text-sm leading-none shadow-print-sm transition-all duration-100 hover:translate-x-[1px] hover:translate-y-[1px] hover:bg-riso-pink hover:shadow-none"
+                            :title="`Edit categories for ${person.name}`"
+                            :aria-label="`Edit categories for ${person.name}`"
+                            @click="openQuickEdit(person.id, 'tags')"
+                        >
+                            <span aria-hidden="true">🏷</span>
+                        </button>
+                    </div>
                 </li>
             </ul>
 
             <QuickEditPersonModal
                 :person-id="editingId"
+                :mode="editingMode"
                 @close="editingId = null"
                 @saved="onQuickEditSaved"
             />
