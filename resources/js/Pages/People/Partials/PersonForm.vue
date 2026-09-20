@@ -5,6 +5,10 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Link } from '@inertiajs/vue3';
+import Avatar from 'primevue/avatar';
+import Button from 'primevue/button';
+import FileUpload from 'primevue/fileupload';
+import Textarea from 'primevue/textarea';
 import { ref } from 'vue';
 
 const props = defineProps({
@@ -41,11 +45,10 @@ const props = defineProps({
 
 defineEmits(['submit', 'cancel']);
 
-const fileInput = ref(null);
 const preview = ref(null);
 
-const onFileChange = (event) => {
-    const file = event.target.files?.[0] ?? null;
+const onFileSelect = (event) => {
+    const file = event.files?.[0] ?? null;
 
     props.form.photo = file;
     props.form.remove_photo = false;
@@ -61,10 +64,6 @@ const clearPhoto = () => {
     props.form.photo = null;
     props.form.remove_photo = true;
     preview.value = null;
-
-    if (fileInput.value) {
-        fileInput.value.value = '';
-    }
 };
 </script>
 
@@ -75,41 +74,43 @@ const clearPhoto = () => {
                 <InputLabel for="photo" value="Photo" />
 
                 <div class="flex flex-wrap items-center gap-4">
-                    <img
+                    <Avatar
                         v-if="preview || (currentPhotoUrl && !form.remove_photo)"
-                        :src="preview || currentPhotoUrl"
-                        alt=""
-                        class="h-20 w-20 border-2 border-ink object-cover shadow-print-sm"
+                        :image="preview || currentPhotoUrl"
+                        shape="square"
+                        size="xlarge"
                     />
-                    <div
+                    <Avatar
                         v-else
-                        class="flex h-20 w-20 items-center justify-center border-2 border-ink bg-riso-pink/20 font-mono text-xs text-ink/50"
-                    >
-                        No photo
-                    </div>
+                        icon="pi pi-user"
+                        shape="square"
+                        size="xlarge"
+                        class="bg-gray-100 text-gray-400"
+                    />
 
-                    <div class="space-y-2">
-                        <input
-                            id="photo"
-                            ref="fileInput"
-                            type="file"
+                    <div class="flex flex-col items-start gap-2">
+                        <FileUpload
+                            mode="basic"
                             accept="image/png,image/jpeg,image/webp"
-                            class="input file:mr-3 file:border-2 file:border-ink file:bg-riso-pink file:px-3 file:py-1 file:font-mono file:text-xs file:font-semibold file:uppercase file:text-ink"
-                            @change="onFileChange"
+                            :auto="true"
+                            :maxFileSize="5000000"
+                            chooseLabel="Choose photo"
+                            @select="onFileSelect"
                         />
 
-                        <button
+                        <Button
                             v-if="currentPhotoUrl && !form.remove_photo"
                             type="button"
-                            class="link text-xs"
+                            label="Remove photo"
+                            text
+                            severity="danger"
+                            size="small"
                             @click="clearPhoto"
-                        >
-                            Remove this photo
-                        </button>
+                        />
                     </div>
                 </div>
 
-                <p class="help">JPG, PNG or WebP, up to 5 MB.</p>
+                <p class="mt-1 text-xs text-gray-500">JPG, PNG or WebP, up to 5 MB.</p>
 
                 <InputError class="mt-2" :message="form.errors.photo" />
             </div>
@@ -163,15 +164,18 @@ const clearPhoto = () => {
             <div>
                 <InputLabel for="notes" value="Notes" />
 
-                <textarea
+                <Textarea
                     id="notes"
                     v-model="form.notes"
                     rows="6"
-                    class="input"
+                    fluid
+                    autoResize
                     placeholder="Plays Wednesday nights, has a net, prefers beach…"
-                ></textarea>
+                />
 
-                <p class="help">Anything you want to remember before you text them.</p>
+                <p class="mt-1 text-xs text-gray-500">
+                    Anything you want to remember before you text them.
+                </p>
 
                 <InputError class="mt-2" :message="form.errors.notes" />
             </div>
@@ -183,13 +187,20 @@ const clearPhoto = () => {
             :answers="form.answers"
         />
 
-        <div class="flex flex-wrap items-center gap-3 border-t-2 border-ink/10 pt-5">
+        <div class="flex flex-wrap items-center gap-3 border-t border-gray-200 pt-5">
             <PrimaryButton :disabled="form.processing">{{ submitLabel }}</PrimaryButton>
 
-            <Link v-if="cancelHref" :href="cancelHref" class="btn btn-secondary">Cancel</Link>
-            <button v-else type="button" class="btn btn-secondary" @click="$emit('cancel')">
-                Cancel
-            </button>
+            <Button
+                v-if="!cancelHref"
+                type="button"
+                severity="secondary"
+                outlined
+                label="Cancel"
+                @click="$emit('cancel')"
+            />
+            <Button v-else asChild severity="secondary" outlined>
+                <Link :href="cancelHref">Cancel</Link>
+            </Button>
         </div>
     </form>
 </template>

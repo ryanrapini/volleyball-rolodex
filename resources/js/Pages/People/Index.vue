@@ -1,9 +1,18 @@
 <script setup>
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import BulkAnswersModal from '@/Components/BulkAnswersModal.vue';
-import InputLabel from '@/Components/InputLabel.vue';
 import QuickEditPersonModal from '@/Components/QuickEditPersonModal.vue';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
+import Avatar from 'primevue/avatar';
+import Badge from 'primevue/badge';
+import Button from 'primevue/button';
+import Card from 'primevue/card';
+import IconField from 'primevue/iconfield';
+import InputIcon from 'primevue/inputicon';
+import InputText from 'primevue/inputtext';
+import Paginator from 'primevue/paginator';
+import SelectButton from 'primevue/selectbutton';
+import Tag from 'primevue/tag';
 import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
@@ -96,7 +105,7 @@ const onBulkApplied = () => {
     selecting.value = false;
 };
 
-const visit = () => {
+const visit = (page = 1) => {
     const params = new URLSearchParams();
 
     if (term.value) {
@@ -109,6 +118,10 @@ const visit = () => {
         }
     });
 
+    if (page > 1) {
+        params.append('page', page);
+    }
+
     const query = params.toString();
     const url = query ? `${route('people.index')}?${query}` : route('people.index');
 
@@ -119,19 +132,12 @@ const visit = () => {
 let debounce;
 watch(term, () => {
     clearTimeout(debounce);
-    debounce = setTimeout(visit, 250);
+    debounce = setTimeout(() => visit(), 250);
 });
 
-const toggleChip = (categoryId, value) => {
-    const values = selected.value[categoryId];
-    const index = values.indexOf(value);
-
-    if (index === -1) {
-        values.push(value);
-    } else {
-        values.splice(index, 1);
-    }
-
+// SelectButton keeps the array in step with the chips; the server does the
+// filtering, so any change is a visit.
+const onFilterChange = () => {
     visit();
 };
 
@@ -155,194 +161,205 @@ const clearSearch = () => {
         <template #header>
             <div class="flex flex-wrap items-end justify-between gap-4">
                 <div>
-                    <h1 class="font-sans text-2xl font-bold uppercase tracking-tight text-ink">
-                        People
-                    </h1>
-                    <p class="mt-1 font-mono text-xs text-ink/60">
+                    <h1 class="text-2xl font-semibold text-gray-900">People</h1>
+                    <p class="mt-1 text-sm text-gray-600">
                         {{ people.total }}
                         {{ people.total === 1 ? 'person' : 'people' }}
                         <span v-if="term">matching “{{ term }}”</span>
                     </p>
                 </div>
 
-                <Link :href="route('people.create')" class="btn btn-primary">Add person</Link>
+                <Button asChild>
+                    <Link :href="route('people.create')">
+                        <i class="pi pi-plus mr-2" />
+                        Add person
+                    </Link>
+                </Button>
             </div>
         </template>
 
-        <div class="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
-            <div class="relative">
-                <InputLabel for="search" value="Search" />
+        <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+            <IconField>
+                <InputIcon class="pi pi-search" />
+                <InputText
+                    id="search"
+                    v-model="term"
+                    type="search"
+                    fluid
+                    placeholder="Name, phone, email or notes…"
+                    autocomplete="off"
+                />
+            </IconField>
 
-                <div class="flex gap-2">
-                    <input
-                        id="search"
-                        v-model="term"
-                        type="search"
-                        class="input"
-                        placeholder="Name, phone, email or notes…"
-                        autocomplete="off"
-                    />
-
-                    <button
-                        v-if="term"
-                        type="button"
-                        class="btn btn-secondary shrink-0"
-                        @click="clearSearch"
-                    >
-                        Clear
-                    </button>
-                </div>
-            </div>
-
-            <!-- Chips -->
+            <!-- Filters and selection -->
             <div v-if="filterOptions.length" class="mt-5">
                 <div class="flex flex-wrap items-center gap-2">
-                    <button
-                        type="button"
-                        class="btn btn-secondary px-3 py-1.5 text-xs"
+                    <Button
+                        severity="secondary"
+                        outlined
+                        size="small"
                         :aria-expanded="showFilters"
                         @click="showFilters = !showFilters"
                     >
+                        <i class="pi pi-filter mr-2" />
                         {{ showFilters ? 'Hide filters' : 'Filters' }}
-                        <span v-if="activeCount">{{ activeCount }}</span>
-                    </button>
+                        <Badge v-if="activeCount" :value="activeCount" class="ml-2" />
+                    </Button>
 
-                    <button
+                    <Button
                         v-if="activeCount"
-                        type="button"
-                        class="link text-xs"
+                        link
+                        size="small"
+                        label="Clear filters"
                         @click="clearFilters"
-                    >
-                        Clear filters
-                    </button>
+                    />
 
-                    <button
-                        type="button"
-                        class="btn px-3 py-1.5 text-xs"
-                        :class="selecting ? 'btn-primary' : 'btn-secondary'"
+                    <Button
+                        :severity="selecting ? 'primary' : 'secondary'"
+                        :outlined="!selecting"
+                        size="small"
                         :aria-pressed="selecting"
+                        :label="selecting ? 'Done selecting' : 'Select people'"
                         @click="toggleSelecting"
-                    >
-                        {{ selecting ? 'Done selecting' : 'Select people' }}
-                    </button>
+                    />
                 </div>
 
-                <div v-if="showFilters" class="mt-4 space-y-4 border-l-4 border-riso-blue/30 pl-3">
+                <div v-if="showFilters" class="mt-4 space-y-4">
                     <div v-for="category in filterOptions" :key="category.id">
-                        <p class="font-mono text-[0.7rem] uppercase tracking-widest text-ink/50">
+                        <p class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
                             {{ category.name }}
                         </p>
 
-                        <div class="mt-1.5 flex flex-wrap gap-1.5">
-                            <button
-                                v-for="chip in category.chips"
-                                :key="chip.value"
-                                type="button"
-                                class="chip"
-                                :class="{
-                                    'chip-active': selected[category.id].includes(chip.value),
-                                }"
-                                :aria-pressed="selected[category.id].includes(chip.value)"
-                                @click="toggleChip(category.id, chip.value)"
-                            >
-                                {{ chip.label }}
-                            </button>
-                        </div>
+                        <SelectButton
+                            v-model="selected[category.id]"
+                            :options="category.chips"
+                            optionLabel="label"
+                            optionValue="value"
+                            multiple
+                            allowEmpty
+                            size="small"
+                            @update:modelValue="onFilterChange"
+                        />
                     </div>
                 </div>
             </div>
 
             <!-- Empty states -->
-            <div v-if="people.data.length === 0" class="card mt-8 p-8 text-center shadow-print-sm">
-                <template v-if="term || activeCount">
-                    <p class="font-sans text-lg font-bold text-ink">Nobody matches that.</p>
-                    <p class="mt-2 font-mono text-xs text-ink/60">
-                        Try a shorter search, or loosen the filters.
-                    </p>
-                    <div class="mt-5 flex flex-wrap justify-center gap-3">
-                        <button
-                            v-if="activeCount"
-                            type="button"
-                            class="btn btn-secondary"
-                            @click="clearFilters"
-                        >
-                            Clear filters
-                        </button>
-                        <button
-                            v-if="term"
-                            type="button"
-                            class="btn btn-secondary"
-                            @click="clearSearch"
-                        >
-                            Clear search
-                        </button>
+            <Card v-if="people.data.length === 0" class="mt-8">
+                <template #content>
+                    <div class="py-8 text-center">
+                        <template v-if="term || activeCount">
+                            <p class="text-lg font-semibold text-gray-900">
+                                Nobody matches that.
+                            </p>
+                            <p class="mt-2 text-sm text-gray-600">
+                                Try a shorter search, or loosen the filters.
+                            </p>
+                            <div class="mt-5 flex flex-wrap justify-center gap-3">
+                                <Button
+                                    v-if="activeCount"
+                                    severity="secondary"
+                                    outlined
+                                    label="Clear filters"
+                                    @click="clearFilters"
+                                />
+                                <Button
+                                    v-if="term"
+                                    severity="secondary"
+                                    outlined
+                                    label="Clear search"
+                                    @click="clearSearch"
+                                />
+                            </div>
+                        </template>
+
+                        <template v-else>
+                            <p class="text-lg font-semibold text-gray-900">
+                                Your rolodex is empty.
+                            </p>
+                            <p class="mt-2 text-sm text-gray-600">
+                                Add the people you can call when you need a seventh.
+                            </p>
+                            <Button asChild class="mt-5">
+                                <Link :href="route('people.create')">
+                                    Add your first person
+                                </Link>
+                            </Button>
+                        </template>
                     </div>
                 </template>
-
-                <template v-else>
-                    <p class="font-sans text-lg font-bold text-ink">Your rolodex is empty.</p>
-                    <p class="mt-2 font-mono text-xs text-ink/60">
-                        Add the people you can call when you need a seventh.
-                    </p>
-                    <Link :href="route('people.create')" class="btn btn-primary mt-5">
-                        Add your first person
-                    </Link>
-                </template>
-            </div>
+            </Card>
 
             <!-- The list -->
             <ul v-else class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <li v-for="person in people.data" :key="person.id" class="relative">
                     <Link
                         :href="route('people.show', person.id)"
-                        class="card flex h-full gap-3 p-4 pb-12 transition-transform duration-100 hover:-translate-y-0.5 hover:shadow-print-sm"
-                        :class="inSelection(person.id) ? 'bg-riso-pink/25 shadow-print-sm' : ''"
+                        class="block h-full"
+                        :tabindex="selecting ? -1 : undefined"
                     >
-                        <img
-                            v-if="person.photo_url"
-                            :src="person.photo_url"
-                            alt=""
-                            class="h-14 w-14 shrink-0 border-2 border-ink object-cover"
-                        />
-                        <span
-                            v-else
-                            class="flex h-14 w-14 shrink-0 items-center justify-center border-2 border-ink bg-riso-pink/20 font-mono text-sm font-semibold text-ink/60"
+                        <Card
+                            class="h-full"
+                            :class="
+                                inSelection(person.id)
+                                    ? 'ring-2 ring-blue-500'
+                                    : 'transition-shadow hover:shadow-md'
+                            "
                         >
-                            {{ initials(person.name) }}
-                        </span>
+                            <template #content>
+                                <div class="flex gap-3 pb-8">
+                                    <Avatar
+                                        v-if="person.photo_url"
+                                        :image="person.photo_url"
+                                        shape="square"
+                                        size="large"
+                                    />
+                                    <Avatar
+                                        v-else
+                                        :label="initials(person.name)"
+                                        shape="square"
+                                        size="large"
+                                        class="bg-gray-100 text-gray-500"
+                                    />
 
-                        <span class="min-w-0">
-                            <span class="block font-sans text-base font-bold leading-tight text-ink">
-                                {{ person.name }}
-                            </span>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="font-semibold leading-tight text-gray-900">
+                                            {{ person.name }}
+                                        </p>
 
-                            <span
-                                v-if="person.phone"
-                                class="mt-2 block font-mono text-xs text-ink/80"
-                            >
-                                {{ person.phone }}
-                            </span>
+                                        <p v-if="person.phone" class="mt-2 text-sm text-gray-700">
+                                            {{ person.phone }}
+                                        </p>
 
-                            <span
-                                v-if="person.email"
-                                class="mt-0.5 block break-all font-mono text-xs text-ink/60"
-                            >
-                                {{ person.email }}
-                            </span>
+                                        <p
+                                            v-if="person.email"
+                                            class="mt-0.5 break-all text-sm text-gray-500"
+                                        >
+                                            {{ person.email }}
+                                        </p>
 
-                            <span
-                                v-if="person.notes_excerpt"
-                                class="mt-3 block border-t-2 border-ink/10 pt-2 font-mono text-[0.7rem] leading-relaxed text-ink/60"
-                            >
-                                {{ person.notes_excerpt }}
-                            </span>
+                                        <p
+                                            v-if="person.notes_excerpt"
+                                            class="mt-3 border-t border-gray-200 pt-2 text-xs leading-relaxed text-gray-500"
+                                        >
+                                            {{ person.notes_excerpt }}
+                                        </p>
 
-                            <span v-if="person.tags.length" class="mt-3 flex flex-wrap gap-1.5">
-                                <span v-for="tag in person.tags" :key="tag" class="tag">
-                                    {{ tag }}
-                                </span>
-                            </span>
-                        </span>
+                                        <div
+                                            v-if="person.tags.length"
+                                            class="mt-3 flex flex-wrap gap-1.5"
+                                        >
+                                            <Tag
+                                                v-for="tag in person.tags"
+                                                :key="tag"
+                                                :value="tag"
+                                                severity="secondary"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </Card>
                     </Link>
 
                     <!-- While selecting, this sits over the whole card so a click
@@ -350,41 +367,48 @@ const clearSearch = () => {
                     <button
                         v-if="selecting"
                         type="button"
-                        class="absolute inset-0 z-10 cursor-pointer border-2 border-transparent"
+                        class="absolute inset-0 z-10 cursor-pointer rounded-lg border-2 border-transparent"
+                        :class="inSelection(person.id) ? 'border-blue-500 bg-blue-500/5' : ''"
                         :aria-pressed="inSelection(person.id)"
                         :aria-label="`${inSelection(person.id) ? 'Deselect' : 'Select'} ${person.name}`"
                         @click="toggleSelected(person.id)"
                     ></button>
 
-                    <span
-                        v-if="selecting"
-                        class="absolute right-2 top-2 z-20 flex h-6 w-6 items-center justify-center border-2 border-ink font-mono text-xs font-bold"
-                        :class="inSelection(person.id) ? 'bg-riso-pink text-ink' : 'bg-white text-transparent'"
-                        aria-hidden="true"
-                    >
-                        ✓
+                    <span v-if="selecting" class="absolute right-3 top-3 z-20">
+                        <i
+                            v-if="inSelection(person.id)"
+                            class="pi pi-check-circle text-xl text-blue-600"
+                            aria-hidden="true"
+                        />
+                        <i
+                            v-else
+                            class="pi pi-circle text-xl text-gray-300"
+                            aria-hidden="true"
+                        />
                     </span>
 
-                    <div v-if="!selecting" class="absolute bottom-2 right-2 flex gap-1.5">
-                        <button
-                            type="button"
-                            class="flex h-8 w-8 items-center justify-center border-2 border-ink bg-white text-sm leading-none shadow-print-sm transition-all duration-100 hover:translate-x-[1px] hover:translate-y-[1px] hover:bg-riso-pink hover:shadow-none"
+                    <div v-if="!selecting" class="absolute bottom-3 right-3 z-20 flex gap-1.5">
+                        <Button
+                            icon="pi pi-pencil"
+                            severity="secondary"
+                            outlined
+                            rounded
+                            size="small"
                             :title="`Edit details for ${person.name}`"
                             :aria-label="`Edit details for ${person.name}`"
-                            @click="openQuickEdit(person.id, 'details')"
-                        >
-                            <span aria-hidden="true">✎</span>
-                        </button>
+                            @click.stop.prevent="openQuickEdit(person.id, 'details')"
+                        />
 
-                        <button
-                            type="button"
-                            class="flex h-8 w-8 items-center justify-center border-2 border-ink bg-white text-sm leading-none shadow-print-sm transition-all duration-100 hover:translate-x-[1px] hover:translate-y-[1px] hover:bg-riso-pink hover:shadow-none"
+                        <Button
+                            icon="pi pi-tag"
+                            severity="secondary"
+                            outlined
+                            rounded
+                            size="small"
                             :title="`Edit categories for ${person.name}`"
                             :aria-label="`Edit categories for ${person.name}`"
-                            @click="openQuickEdit(person.id, 'tags')"
-                        >
-                            <span aria-hidden="true">🏷</span>
-                        </button>
+                            @click.stop.prevent="openQuickEdit(person.id, 'tags')"
+                        />
                     </div>
                 </li>
             </ul>
@@ -404,46 +428,35 @@ const clearSearch = () => {
             />
 
             <!-- Bulk actions, pinned to the bottom while a selection exists -->
-            <div
-                v-if="picked.length"
-                class="fixed inset-x-0 bottom-0 z-30 border-t-2 border-ink bg-paper"
-            >
+            <div v-if="picked.length" class="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white">
                 <div
-                    class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8"
+                    class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8"
                 >
-                    <p class="font-mono text-xs font-bold uppercase tracking-widest text-ink">
+                    <p class="text-sm font-medium text-gray-900">
                         {{ picked.length }} selected
                     </p>
 
                     <div class="flex flex-wrap gap-2">
-                        <button type="button" class="btn btn-secondary" @click="clearSelection">
-                            Clear
-                        </button>
-                        <button type="button" class="btn btn-primary" @click="bulkOpen = true">
-                            Apply details
-                        </button>
+                        <Button
+                            severity="secondary"
+                            outlined
+                            label="Clear"
+                            @click="clearSelection"
+                        />
+                        <Button label="Apply details" @click="bulkOpen = true" />
                     </div>
                 </div>
             </div>
 
-            <!-- Pagination -->
-            <nav
-                v-if="people.links.length > 3"
-                class="mt-8 flex flex-wrap items-center gap-2"
-                aria-label="Pagination"
-            >
-                <template v-for="(link, index) in people.links" :key="index">
-                    <Link
-                        v-if="link.url"
-                        :href="link.url"
-                        class="chip"
-                        :class="{ 'chip-active': link.active }"
-                        preserve-scroll
-                        v-html="link.label"
-                    />
-                    <span v-else class="chip cursor-not-allowed opacity-40" v-html="link.label" />
-                </template>
-            </nav>
+            <Paginator
+                v-if="people.total > people.per_page"
+                :first="(people.current_page - 1) * people.per_page"
+                :rows="people.per_page"
+                :total="people.total"
+                :rowsPerPageOptions="[people.per_page]"
+                class="mt-8"
+                @page="visit($event.page + 1)"
+            />
         </div>
     </AuthenticatedLayout>
 </template>

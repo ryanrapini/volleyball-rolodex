@@ -4,6 +4,7 @@ import Modal from '@/Components/Modal.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { router, usePage } from '@inertiajs/vue3';
+import Message from 'primevue/message';
 import { ref, watch } from 'vue';
 
 const props = defineProps({
@@ -132,7 +133,6 @@ const submit = async () => {
 
         if (!response.ok) {
             problem.value = data.message ?? data.error ?? 'Could not apply that.';
-
             return;
         }
 
@@ -149,31 +149,29 @@ const submit = async () => {
 
 <template>
     <Modal :show="show" max-width="2xl" @close="close">
-        <div class="max-h-[85vh] overflow-y-auto p-6">
-            <h2 class="font-sans text-lg font-bold uppercase tracking-tight text-ink">
-                Apply details to {{ personIds.length }}
-                {{ personIds.length === 1 ? 'person' : 'people' }}
-            </h2>
+        <h2 class="text-lg font-semibold text-gray-900">
+            Apply details to {{ personIds.length }}
+            {{ personIds.length === 1 ? 'person' : 'people' }}
+        </h2>
 
-            <p v-if="problem" class="mt-3 inline-block bg-riso-pink px-2 py-1 font-mono text-xs text-ink">
-                {{ problem }}
-            </p>
+        <Message v-if="problem" severity="error" size="small" variant="simple" class="mt-3">
+            {{ problem }}
+        </Message>
 
-            <div class="mt-4">
-                <CategoryAnswersFieldset
-                    :categories="categories"
-                    :answers="answers"
-                    legend="What to set"
-                    note="Only the answers you choose are applied. Anything you leave unrecorded keeps whatever that person already has, and pick-any choices are added to what they have rather than replacing it."
-                />
-            </div>
+        <div class="mt-4 max-h-[60vh] overflow-y-auto pr-1">
+            <CategoryAnswersFieldset
+                :categories="categories"
+                :answers="answers"
+                legend="What to set"
+                note="Only the answers you choose are applied. Anything you leave unrecorded keeps whatever that person already has, and pick-any choices are added to what they have rather than replacing it."
+            />
+        </div>
 
-            <div class="mt-6 flex justify-end gap-3 border-t-2 border-ink/10 pt-5">
-                <SecondaryButton @click="close">Cancel</SecondaryButton>
-                <PrimaryButton :disabled="saving" @click="submit">
-                    {{ saving ? 'Applying…' : 'Apply to all' }}
-                </PrimaryButton>
-            </div>
+        <div class="mt-6 flex justify-end gap-3 border-t border-gray-200 pt-5">
+            <SecondaryButton @click="close">Cancel</SecondaryButton>
+            <PrimaryButton type="button" :disabled="saving" @click="submit">
+                {{ saving ? 'Applying…' : 'Apply to all' }}
+            </PrimaryButton>
         </div>
     </Modal>
 </template>

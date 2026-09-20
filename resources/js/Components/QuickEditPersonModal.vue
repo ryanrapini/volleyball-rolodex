@@ -2,6 +2,8 @@
 import Modal from '@/Components/Modal.vue';
 import PersonForm from '@/Pages/People/Partials/PersonForm.vue';
 import { useForm } from '@inertiajs/vue3';
+import Message from 'primevue/message';
+import Skeleton from 'primevue/skeleton';
 import { computed, ref, watch } from 'vue';
 
 /*
@@ -25,7 +27,7 @@ const emit = defineEmits(['close', 'saved']);
 const loading = ref(false);
 const problem = ref('');
 const categories = ref([]);
-const currentPhoto = ref(null);
+const currentPhotoUrl = ref(null);
 
 const form = useForm({
     name: '',
@@ -47,21 +49,13 @@ const heading = computed(() => {
     return isTags.value ? `Categories for ${form.name}` : `Edit ${form.name}`;
 });
 
-const xsrfToken = () => {
-    const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
-
-    return match ? decodeURIComponent(match[1]) : '';
-};
-
-const close = () => {
-    emit('close');
-};
+const submitLabel = computed(() => (isTags.value ? 'Save categories' : 'Save changes'));
 
 // Load on open, so the popup always starts from what is actually stored. The
 // list card only carries an excerpt of the notes.
 watch(
-    () => props.personId,
-    async (id) => {
+    () => [props.personId, props.mode],
+    async ([id]) => {
         if (!id) {
             return;
         }
@@ -73,7 +67,7 @@ watch(
         try {
             const response = await fetch(route('people.quick-edit', id), {
                 credentials: 'same-origin',
-                headers: { Accept: 'application/json', 'X-XSRF-TOKEN': xsrfToken() },
+                headers: { Accept: 'application/json' },
             });
 
             if (!response.ok) {
@@ -86,7 +80,7 @@ watch(
             const data = await response.json();
 
             categories.value = data.categories ?? [];
-            currentPhoto.value = data.person.photo_url ?? null;
+            currentPhotoUrl.value = data.person.photo_url ?? null;
 
             form.name = data.person.name ?? '';
             form.phone = data.person.phone ?? '';
@@ -94,6 +88,9 @@ watch(
             form.notes = data.person.notes ?? '';
             form.photo = null;
             form.remove_photo = false;
+
+            // Every category gets an entry carrying all three keys, so the
+            // controls never read off the end of a missing answer.
             form.answers = Object.fromEntries(
                 categories.value.map((category) => [
                     category.id,
@@ -110,108 +107,77 @@ watch(
             loading.value = false;
         }
     },
+    { immediate: true },
 );
 
-const submit = async () => {
-    const body = new FormData();
-
-    // The name is always sent: the endpoint requires it, and sending it
-    // unchanged keeps this a no-op for the fields this popup does not show.
-    body.append('name', form.name ?? '');
-
-    if (!isTags.value) {
-        body.append('phone', form.phone ?? '');
-        body.append('email', form.email ?? '');
-        body.append('notes', form.notes ?? '');
-        body.append('remove_photo', form.remove_photo ? '1' : '0');
-
-        if (form.photo) {
-            body.append('photo', form.photo);
-        }
-    }
-
-    // Answers go out as a list, so an entry always carries its category id even
-    // when every field inside it is empty. An unset value is simply absent.
-    Object.entries(form.answers).forEach(([categoryId, answer], index) => {
-        body.append(`answers[${index}][category_id]`, categoryId);
+const submit = () => {
+    /*
+     * Answers go out as a list, so an entry always carries its category id even
+     * when every field inside it is empty. An unset value is simply absent.
+     */
+    const answers = Object.entries(form.answers).map(([categoryId, answer]) => {
+        const entry = { category_id: categoryId };
 
         if (answer.value !== null && answer.value !== undefined) {
-            body.append(`answers[${index}][value]`, answer.value ? '1' : '0');
+            entry.value = answer.value;
         }
 
         if (answer.option_id) {
-            body.append(`answers[${index}][option_id]`, answer.option_id);
+            entry.option_id = answer.option_id;
         }
 
-        (answer.option_ids ?? []).forEach((optionId, position) => {
-            body.append(`answers[${index}][option_ids][${position}]`, optionId);
-        });
+        if (answer.option_ids?.length) {
+            entry.option_ids = [...answer.option_ids];
+        }
+
+        return entry;
     });
 
-    form.processing = true;
-    form.clearErrors();
-    problem.value = '';
+    // The name is always sent: the endpoint requires it, and sending it
+    // unchanged keeps this a no-op for the fields this popup does not show.
+    const payload = isTags.value
+        ? { name: form.name ?? '', answers }
+        : {
+              name: form.name ?? '',
+              phone: form.phone ?? '',
+              email: form.email ?? '',
+              notes: form.notes ?? '',
+              remove_photo: !!form.remove_photo,
+              photo: form.photo,
+              answers,
+          };
 
-    try {
-        const response = await fetch(route('people.quick-update', props.personId), {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { Accept: 'application/json', 'X-XSRF-TOKEN': xsrfToken() },
-            body,
-        });
-
-        const data = await response.json().catch(() => ({}));
-
-        if (response.status === 422) {
-            form.setError(data.errors ?? {});
+    form.transform(() => payload).post(route('people.quick-update', props.personId), {
+        preserveScroll: true,
+        onSuccess: () => emit('saved'),
+        onError: () => {
             problem.value = 'Some of that needs fixing.';
-
-            return;
-        }
-
-        if (!response.ok) {
-            problem.value = data.message ?? data.error ?? 'Could not save.';
-
-            return;
-        }
-
-        emit('saved');
-        close();
-    } catch {
-        problem.value = 'Could not save.';
-    } finally {
-        form.processing = false;
-    }
+        },
+    });
 };
 </script>
 
 <template>
-    <Modal :show="personId !== null" max-width="2xl" @close="close">
-        <div class="max-h-[85vh] overflow-y-auto p-6">
-            <h2 class="font-sans text-lg font-bold uppercase tracking-tight text-ink">
-                {{ heading }}
-            </h2>
+    <Modal :show="!!personId" max-width="lg" @close="$emit('close')">
+        <h2 class="text-lg font-semibold text-gray-900">{{ heading }}</h2>
 
-            <p v-if="problem" class="mt-3 inline-block bg-riso-pink px-2 py-1 font-mono text-xs text-ink">
-                {{ problem }}
-            </p>
+        <Message v-if="problem" severity="error" size="small" variant="simple" class="mt-3">
+            {{ problem }}
+        </Message>
 
-            <p v-if="loading" class="mt-4 font-mono text-xs uppercase tracking-widest text-ink/50">
-                Loading…
-            </p>
+        <Skeleton v-if="loading" height="12rem" class="mt-5" />
 
-            <div v-else class="mt-4">
-                <PersonForm
-                    :form="form"
-                    :categories="categories"
-                    :current-photo-url="currentPhoto"
-                    :show-core="!isTags"
-                    :show-answers="isTags"
-                    :submit-label="isTags ? 'Save categories' : 'Save details'"
-                    @submit="submit"
-                    @cancel="close"
-                />
-            </div>
+        <div v-else class="mt-5">
+            <PersonForm
+                :form="form"
+                :categories="categories"
+                :current-photo-url="currentPhotoUrl"
+                :show-core="!isTags"
+                :show-answers="isTags"
+                :submit-label="submitLabel"
+                @submit="submit"
+                @cancel="$emit('close')"
+            />
         </div>
     </Modal>
 </template>

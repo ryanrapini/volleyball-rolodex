@@ -2,6 +2,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import PersonForm from './Partials/PersonForm.vue';
 import { Head, useForm } from '@inertiajs/vue3';
+import Card from 'primevue/card';
 
 const props = defineProps({
     person: {
@@ -53,22 +54,24 @@ const submit = () => {
 
     <AuthenticatedLayout>
         <template #header>
-            <h1 class="font-sans text-2xl font-bold uppercase tracking-tight text-ink">
+            <h1 class="text-2xl font-semibold text-gray-900">
                 Edit {{ person.name }}
             </h1>
         </template>
 
-        <div class="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
-            <div class="card p-6 shadow-print">
-                <PersonForm
-                    :form="form"
-                    :categories="categories"
-                    submit-label="Save changes"
-                    :cancel-href="route('people.show', person.id)"
-                    :current-photo-url="person.photo_url"
-                    @submit="submit"
-                />
-            </div>
+        <div class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+            <Card>
+                <template #content>
+                    <PersonForm
+                        :form="form"
+                        :categories="categories"
+                        submit-label="Save changes"
+                        :cancel-href="route('people.show', person.id)"
+                        :current-photo-url="person.photo_url"
+                        @submit="submit"
+                    />
+                </template>
+            </Card>
         </div>
     </AuthenticatedLayout>
 </template>

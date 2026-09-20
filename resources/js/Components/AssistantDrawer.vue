@@ -1,7 +1,11 @@
 <script setup>
-import { nextTick, ref, watch } from 'vue';
-import { router, usePage } from '@inertiajs/vue3';
 import { draft, error, messages, open, sending } from '@/assistant';
+import { router, usePage } from '@inertiajs/vue3';
+import Button from 'primevue/button';
+import Drawer from 'primevue/drawer';
+import Message from 'primevue/message';
+import Textarea from 'primevue/textarea';
+import { nextTick, ref, watch } from 'vue';
 
 const page = usePage();
 const transcript = ref(null);
@@ -170,138 +174,134 @@ const clearTranscript = () => {
 </script>
 
 <template>
-    <Teleport to="body">
-        <div
-            v-if="open"
-            class="fixed inset-0 z-40 bg-ink/40"
-            @click="open = false"
-        ></div>
-
-        <aside
-            class="fixed inset-y-0 left-0 z-50 flex w-full max-w-sm flex-col border-r-2 border-ink bg-paper transition-transform duration-200"
-            :class="open ? 'translate-x-0' : '-translate-x-full'"
-            :inert="!open"
-            :aria-hidden="!open"
-            aria-label="Rolodex assistant"
-        >
-            <header class="flex items-center justify-between border-b-2 border-ink bg-white px-4 py-3">
+    <Drawer
+        v-model:visible="open"
+        position="left"
+        :style="{ width: '26rem', maxWidth: '100%' }"
+        aria-label="Rolodex assistant"
+    >
+        <template #header>
+            <div class="flex w-full items-center justify-between gap-3">
                 <div>
-                    <h2 class="font-sans text-base font-bold uppercase tracking-tight text-ink">
-                        Assistant
-                    </h2>
-                    <p class="font-mono text-[0.65rem] uppercase tracking-widest text-ink/50">
-                        Talk, and it fills the rolodex
-                    </p>
+                    <h2 class="text-base font-semibold text-gray-900">Assistant</h2>
+                    <p class="text-xs text-gray-500">Talk, and it fills the rolodex</p>
                 </div>
 
-                <div class="flex items-center gap-2">
-                    <button
+                <div class="flex items-center gap-1">
+                    <Button
                         v-if="messages.length"
-                        type="button"
-                        class="link text-xs"
+                        link
+                        size="small"
+                        label="Clear"
                         @click="clearTranscript"
-                    >
-                        Clear
-                    </button>
-                    <button
-                        type="button"
-                        class="btn btn-secondary px-3 py-1 text-xs"
+                    />
+                    <Button
+                        icon="pi pi-times"
+                        text
+                        rounded
+                        severity="secondary"
+                        aria-label="Close assistant"
                         @click="open = false"
-                    >
-                        Close
-                    </button>
+                    />
                 </div>
-            </header>
+            </div>
+        </template>
 
-            <div ref="transcript" class="flex-1 space-y-3 overflow-y-auto px-4 py-4">
-                <p
-                    v-if="!messages.length"
-                    class="card p-4 font-mono text-xs leading-relaxed text-ink/70"
-                >
-                    Try: <span class="text-ink">“Marcus Hale sets, BB level, plays Wednesday
-                    nights, 555-0100”</span> — or hold the mic and say it out loud.
-                </p>
-
-                <div
-                    v-for="(message, index) in messages"
-                    :key="index"
-                    class="max-w-[95%] border-2 border-ink p-3"
-                    :class="message.role === 'user' ? 'ml-auto bg-riso-pink/25' : 'bg-white'"
-                >
-                    <p class="font-mono text-[0.65rem] uppercase tracking-widest text-ink/50">
-                        {{ message.role === 'user' ? 'You' : 'Assistant' }}
-                    </p>
-                    <p class="mt-1 whitespace-pre-line font-sans text-sm leading-relaxed text-ink">
-                        {{ message.content }}
-                    </p>
-
-                    <ul v-if="message.actions?.length" class="mt-2 space-y-1">
-                        <li
-                            v-for="action in message.actions"
-                            :key="action.id"
-                            class="font-mono text-[0.7rem] text-ink/70"
-                        >
-                            ✓ {{ action.type === 'created' ? 'Added' : 'Updated' }}
-                            {{ action.name }}
-                        </li>
-                    </ul>
-                </div>
-
-                <p
-                    v-if="sending || transcribing"
-                    class="font-mono text-xs uppercase tracking-widest text-ink/50"
-                >
-                    {{ transcribing ? 'Listening back…' : 'Thinking…' }}
-                </p>
-
-                <p v-if="error" class="bg-riso-pink px-2 py-1 font-mono text-xs text-ink">
-                    {{ error }}
-                </p>
-
-                <p v-if="micProblem" class="font-mono text-xs text-ink/70">
-                    {{ micProblem }}
+        <div ref="transcript" class="flex h-full flex-col gap-3 overflow-y-auto">
+            <div v-if="!messages.length" class="rounded-md border border-gray-200 bg-gray-50 p-4">
+                <p class="text-xs leading-relaxed text-gray-600">
+                    Try:
+                    <span class="font-medium text-gray-900">
+                        “Marcus Hale sets, BB level, plays Wednesday nights, 555-0100”
+                    </span>
+                    — or hold the mic and say it out loud.
                 </p>
             </div>
 
-            <form class="border-t-2 border-ink bg-white p-3" @submit.prevent="send">
-                <label for="assistant-input" class="label">Say something</label>
+            <div
+                v-for="(message, index) in messages"
+                :key="index"
+                class="max-w-[95%] rounded-md p-3"
+                :class="
+                    message.role === 'user'
+                        ? 'ml-auto bg-blue-50 ring-1 ring-blue-100'
+                        : 'bg-gray-50 ring-1 ring-gray-200'
+                "
+            >
+                <p class="text-xs font-medium text-gray-500">
+                    {{ message.role === 'user' ? 'You' : 'Assistant' }}
+                </p>
+                <p class="mt-1 whitespace-pre-line text-sm leading-relaxed text-gray-900">
+                    {{ message.content }}
+                </p>
+
+                <ul v-if="message.actions?.length" class="mt-2 space-y-1">
+                    <li
+                        v-for="action in message.actions"
+                        :key="action.id"
+                        class="flex items-center gap-1.5 text-xs text-gray-700"
+                    >
+                        <i class="pi pi-check-circle text-green-600" aria-hidden="true" />
+                        {{ action.type === 'created' ? 'Added' : 'Updated' }}
+                        {{ action.name }}
+                    </li>
+                </ul>
+            </div>
+
+            <p v-if="sending || transcribing" class="text-xs text-gray-500">
+                {{ transcribing ? 'Listening back…' : 'Thinking…' }}
+            </p>
+
+            <Message v-if="error" severity="error" size="small" variant="simple">
+                {{ error }}
+            </Message>
+
+            <Message v-if="micProblem" severity="warn" size="small" variant="simple">
+                {{ micProblem }}
+            </Message>
+        </div>
+
+        <template #footer>
+            <form class="w-full" @submit.prevent="send">
+                <label for="assistant-input" class="mb-1 block text-sm font-medium text-gray-700">
+                    Say something
+                </label>
 
                 <div class="flex gap-2">
-                    <textarea
+                    <Textarea
                         id="assistant-input"
                         v-model="draft"
                         rows="2"
-                        class="input resize-none"
+                        fluid
+                        class="resize-none"
                         placeholder="Add someone, or change their details…"
                         @keydown.enter.exact.prevent="send"
-                    ></textarea>
+                    />
 
-                    <button
-                        type="button"
-                        class="btn shrink-0 self-stretch px-3"
-                        :class="recording ? 'btn-primary' : 'btn-secondary'"
+                    <Button
+                        :icon="recording ? 'pi pi-stop-circle' : 'pi pi-microphone'"
+                        :severity="recording ? 'danger' : 'secondary'"
+                        :outlined="!recording"
                         :aria-pressed="recording"
                         :title="recording ? 'Stop and transcribe' : 'Hold to talk'"
+                        class="shrink-0 self-stretch"
                         @click="toggleRecording"
-                    >
-                        {{ recording ? '■' : '🎙' }}
-                    </button>
+                    />
                 </div>
 
                 <div class="mt-2 flex items-center justify-between">
-                    <p class="font-mono text-[0.65rem] text-ink/50">
+                    <p class="text-xs text-gray-500">
                         Enter sends · Shift+Enter for a new line
                     </p>
 
-                    <button
+                    <Button
                         type="submit"
-                        class="btn btn-primary px-3 py-1.5 text-xs"
+                        size="small"
+                        label="Send"
                         :disabled="sending || draft.trim() === ''"
-                    >
-                        Send
-                    </button>
+                    />
                 </div>
             </form>
-        </aside>
-    </Teleport>
+        </template>
+    </Drawer>
 </template>
