@@ -13,7 +13,8 @@ use Illuminate\Support\Facades\Http;
  */
 function assistantFixture(): array
 {
-    $user = User::factory()->create();
+    // The assistant is gated behind admin approval now, so the fixture has it.
+    $user = User::factory()->aiApproved()->create();
 
     $canSet = Category::factory()->for($user)->boolean()->create(['name' => 'Can set', 'position' => 0]);
     $level = Category::factory()->for($user)->single()->create(['name' => 'Skill level', 'position' => 1]);

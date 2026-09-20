@@ -30,10 +30,17 @@ const initials = computed(() =>
         .join(''),
 );
 
-const navItems = [
+const navItems = computed(() => [
     { label: 'People', icon: 'pi pi-users', route: 'people.index', active: 'people.*' },
     { label: 'Categories', icon: 'pi pi-tags', route: 'categories.index', active: 'categories.*' },
-];
+    ...(user.value?.is_admin
+        ? [{ label: 'Accounts', icon: 'pi pi-cog', route: 'admin.users', active: 'admin.*' }]
+        : []),
+]);
+
+// The AI is switched on per account by an admin, so the button is hidden rather
+// than shown and then refused.
+const canUseAi = computed(() => user.value?.can_use_ai === true);
 
 const userMenuItems = computed(() => [
     { label: user.value?.name ?? '', disabled: true },
@@ -106,7 +113,7 @@ watch(
 
             <template #end>
                 <div class="flex items-center gap-2">
-                    <div class="hidden md:block">
+                    <div v-if="canUseAi" class="hidden md:block">
                         <Button
                             label="Assistant"
                             icon="pi pi-comments"
@@ -163,6 +170,7 @@ watch(
                     @click="go(item.route)"
                 />
                 <Button
+                    v-if="canUseAi"
                     label="Assistant"
                     icon="pi pi-comments"
                     text
@@ -202,6 +210,6 @@ watch(
             </div>
         </Drawer>
 
-        <AssistantDrawer />
+        <AssistantDrawer v-if="canUseAi" />
     </div>
 </template>

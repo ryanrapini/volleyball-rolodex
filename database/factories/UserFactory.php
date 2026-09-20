@@ -42,4 +42,26 @@ class UserFactory extends Factory
             'email_verified_at' => null,
         ]);
     }
+
+    /**
+     * An account the owner has switched the AI assistant on for. New accounts
+     * do not have it until an admin approves them.
+     */
+    public function aiApproved(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'ai_approved_at' => now(),
+        ]);
+    }
+
+    /**
+     * The owner's own account.
+     */
+    public function admin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_admin' => true,
+            'ai_approved_at' => now(),
+        ]);
+    }
 }

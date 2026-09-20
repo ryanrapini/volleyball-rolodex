@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AiChatController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\PersonController;
@@ -32,8 +33,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('/people/bulk-answers', [PersonController::class, 'bulkAnswers'])->name('people.bulk-answers');
 
-    Route::post('/ai/chat', [AiChatController::class, 'chat'])->name('ai.chat');
-    Route::post('/ai/transcribe', [AiChatController::class, 'transcribe'])->name('ai.transcribe');
+    Route::post('/ai/chat', [AiChatController::class, 'chat'])
+        ->middleware(['ai-approved', 'throttle:ai-chat'])
+        ->name('ai.chat');
+
+    Route::post('/ai/transcribe', [AiChatController::class, 'transcribe'])
+        ->middleware(['ai-approved', 'throttle:ai-transcribe'])
+        ->name('ai.transcribe');
+});
+
+// Account management, for the owner only.
+Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(function () {
+    Route::get('/users', [AdminUserController::class, 'index'])->name('admin.users');
+    Route::patch('/users/{user}/ai', [AdminUserController::class, 'updateAiApproval'])->name('admin.users.ai');
+    Route::delete('/users/{user}', [AdminUserController::class, 'destroy'])->name('admin.users.destroy');
 });
 
 Route::middleware('auth')->group(function () {

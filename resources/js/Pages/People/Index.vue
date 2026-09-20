@@ -168,6 +168,14 @@ const clearSearch = () => {
                         {{ people.total === 1 ? 'person' : 'people' }}
                         <span v-if="term">matching “{{ term }}”</span>
                     </p>
+
+                    <p
+                        v-if="!$page.props.auth.user.can_use_ai"
+                        class="mt-1 text-xs text-gray-500"
+                    >
+                        <i class="pi pi-info-circle mr-1" aria-hidden="true" />
+                        The AI assistant unlocks once your account is approved.
+                    </p>
                 </div>
 
                 <ButtonLink :href="route('people.create')">
