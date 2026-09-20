@@ -21,5 +21,10 @@
     },
     "optionalDependencies": {
         "@laravel/multiplex": "^0.4.1"
+    },
+    "dependencies": {
+        "@primeuix/themes": "^1.2.5",
+        "primeicons": "^7.0.0",
+        "primevue": "^4.5.5"
     }
 }
