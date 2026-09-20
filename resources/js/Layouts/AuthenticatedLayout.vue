@@ -18,7 +18,16 @@ const page = usePage();
             <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
                 <div class="flex h-16 justify-between">
                     <div class="flex items-center gap-8">
-                        <ApplicationLogo href="/dashboard" />
+                        <ApplicationLogo :href="route('people.index')" />
+
+                        <div class="hidden items-center gap-6 sm:flex">
+                            <NavLink
+                                :href="route('people.index')"
+                                :active="route().current('people.*')"
+                            >
+                                People
+                            </NavLink>
+                        </div>
                     </div>
 
                     <div class="hidden sm:ms-6 sm:flex sm:items-center">
@@ -108,7 +117,14 @@ const page = usePage();
                 }"
                 class="border-t-2 border-ink sm:hidden"
             >
-                <div class="space-y-1 pb-3 pt-2"></div>
+                <div class="space-y-1 pb-3 pt-2">
+                    <ResponsiveNavLink
+                        :href="route('people.index')"
+                        :active="route().current('people.*')"
+                    >
+                        People
+                    </ResponsiveNavLink>
+                </div>
 
                 <div class="border-t-2 border-ink pb-1 pt-4">
                     <div class="px-4">
