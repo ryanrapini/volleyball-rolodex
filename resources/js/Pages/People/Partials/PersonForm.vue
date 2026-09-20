@@ -8,6 +8,7 @@ import TextInput from '@/Components/TextInput.vue';
 import Avatar from 'primevue/avatar';
 import Button from 'primevue/button';
 import FileUpload from 'primevue/fileupload';
+import Message from 'primevue/message';
 import Textarea from 'primevue/textarea';
 import { ref } from 'vue';
 
@@ -43,7 +44,7 @@ const props = defineProps({
     },
 });
 
-defineEmits(['submit', 'cancel']);
+const emit = defineEmits(['submit', 'cancel']);
 
 const preview = ref(null);
 
@@ -65,10 +66,36 @@ const clearPhoto = () => {
     props.form.remove_photo = true;
     preview.value = null;
 };
+
+/*
+ * The server sends the form back with a warning instead of blocking outright,
+ * because two people really can share a name. This is the "yes, I meant it".
+ */
+const addAnyway = () => {
+    props.form.confirm_duplicate = true;
+    props.form.clearErrors('duplicate');
+    emit('submit');
+};
 </script>
 
 <template>
     <form class="space-y-5" @submit.prevent="$emit('submit')">
+        <Message v-if="form.errors.duplicate" severity="warn" :closable="false">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <span>{{ form.errors.duplicate }}</span>
+
+                <Button
+                    type="button"
+                    size="small"
+                    severity="secondary"
+                    outlined
+                    label="Add them anyway"
+                    class="shrink-0 self-start"
+                    @click="addAnyway"
+                />
+            </div>
+        </Message>
+
         <template v-if="showCore">
             <div>
                 <InputLabel for="photo" value="Photo" />

@@ -22,6 +22,7 @@ const form = useForm({
     notes: '',
     photo: null,
     remove_photo: false,
+    confirm_duplicate: false,
     answers: Object.fromEntries(
         props.categories.map((category) => [
             category.id,

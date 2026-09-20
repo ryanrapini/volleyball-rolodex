@@ -27,6 +27,9 @@ class PersonRequest extends FormRequest
             'notes' => ['nullable', 'string', 'max:10000'],
             'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'remove_photo' => ['nullable', 'boolean'],
+            // Set once the user has been told this looks like someone they
+            // already have and has said it really is a second person.
+            'confirm_duplicate' => ['nullable', 'boolean'],
             ...$this->answerRules(),
         ];
     }

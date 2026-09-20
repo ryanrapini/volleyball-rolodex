@@ -8,6 +8,7 @@ use App\Http\Requests\PersonRequest;
 use App\Models\Category;
 use App\Models\CategoryOption;
 use App\Models\Person;
+use App\Support\DuplicatePeople;
 use App\Support\PersonAnswers;
 use App\Support\PersonPhotos;
 use Illuminate\Database\Eloquent\Builder;
@@ -82,8 +83,13 @@ class PersonController extends Controller
 
     public function store(PersonRequest $request): RedirectResponse
     {
+        // Typing the same person in twice is easy to do by hand, so ask first.
+        if ($blocked = $this->blockDuplicate($request)) {
+            return $blocked;
+        }
+
         $person = $request->user()->people()->create(
-            $request->safe()->except(['photo', 'remove_photo', 'answers']),
+            $request->safe()->except(['photo', 'remove_photo', 'answers', 'confirm_duplicate']),
         );
 
         if ($request->hasFile('photo')) {
@@ -139,6 +145,10 @@ class PersonController extends Controller
     public function update(PersonRequest $request, Person $person): RedirectResponse
     {
         $this->authorize('update', $person);
+
+        if ($blocked = $this->blockDuplicate($request, $person)) {
+            return $blocked;
+        }
 
         $this->applyUpdate($request, $person);
 
@@ -268,11 +278,55 @@ class PersonController extends Controller
     }
 
     /**
+     * Send the form back with a warning when this looks like someone already in
+     * the rolodex, unless the user has confirmed it really is a second person.
+     */
+    private function blockDuplicate(PersonRequest $request, ?Person $except = null): ?RedirectResponse
+    {
+        if ($request->boolean('confirm_duplicate')) {
+            return null;
+        }
+
+        $duplicates = (new DuplicatePeople($request->user()))->matches(
+            (string) $request->input('name', ''),
+            $request->input('phone'),
+            $except,
+        );
+
+        if ($duplicates->isEmpty()) {
+            return null;
+        }
+
+        return back()
+            ->withInput()
+            ->withErrors([
+                'duplicate' => $this->duplicateWarning($duplicates, (string) $request->input('name', '')),
+            ]);
+    }
+
+    /**
+     * @param  Collection<int, Person>  $duplicates
+     */
+    private function duplicateWarning(Collection $duplicates, string $name): string
+    {
+        $first = $duplicates->first();
+        $label = $first->phone ? $first->name.' ('.$first->phone.')' : $first->name;
+        $others = $duplicates->count() - 1;
+
+        if ($others < 1) {
+            return $name.' looks like '.$label.', who is already in your rolodex.';
+        }
+
+        return $name.' looks like '.$label.' and '.$others.' other '
+            .Str::plural('entry', $others).' already in your rolodex.';
+    }
+
+    /**
      * Everything an edit does, whichever door it came through.
      */
     private function applyUpdate(PersonRequest $request, Person $person): void
     {
-        $person->update($request->safe()->except(['photo', 'remove_photo', 'answers']));
+        $person->update($request->safe()->except(['photo', 'remove_photo', 'answers', 'confirm_duplicate']));
 
         if ($request->hasFile('photo')) {
             PersonPhotos::store($person, $request->file('photo'));

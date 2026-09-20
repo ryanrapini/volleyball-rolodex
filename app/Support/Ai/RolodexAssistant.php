@@ -6,6 +6,7 @@ use App\Enums\CategoryType;
 use App\Models\Category;
 use App\Models\Person;
 use App\Models\User;
+use App\Support\DuplicatePeople;
 use App\Support\PersonAnswers;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Collection;
@@ -319,64 +320,11 @@ class RolodexAssistant
      */
     private function duplicateCandidates(string $name): Collection
     {
-        $needle = $this->normaliseName($name);
-
-        if ($needle === '') {
-            return collect();
-        }
-
-        return $this->user->people()
-            ->with(['categoryValues.category', 'categoryValues.option'])
-            ->get()
-            ->filter(function (Person $person) use ($needle): bool {
-                $candidate = $this->normaliseName($person->name);
-
-                if ($candidate === '') {
-                    return false;
-                }
-
-                // Same name, however it was punctuated or capitalised.
-                if ($candidate === $needle) {
-                    return true;
-                }
-
-                // The same words in a different order.
-                if ($this->wordSet($candidate) === $this->wordSet($needle)) {
-                    return true;
-                }
-
-                $shortest = min(mb_strlen($candidate), mb_strlen($needle));
-
-                // One name contains the other: "Marcus" against "Marcus Hale".
-                if ($shortest >= 3 && (str_contains($candidate, $needle) || str_contains($needle, $candidate))) {
-                    return true;
-                }
-
-                // A typo: short names get one character of slack, longer ones two,
-                // which is what catches a transposition ("Marcsu" for "Marcus").
-                return $shortest >= 5 && levenshtein($candidate, $needle) <= ($shortest <= 8 ? 1 : 2);
-            })
-            ->take(5)
-            ->values();
-    }
-
-    private function normaliseName(?string $name): string
-    {
-        $letters = preg_replace('/[^\p{L}\p{N} ]+/u', ' ', mb_strtolower((string) $name)) ?? '';
-        $collapsed = preg_replace('/\s+/', ' ', $letters) ?? '';
-
-        return trim($collapsed);
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private function wordSet(string $normalised): array
-    {
-        $words = array_values(array_unique(explode(' ', $normalised)));
-        sort($words);
-
-        return $words;
+        // The same rules the manual form uses, so the two cannot disagree about
+        // what "the same person twice" means.
+        return (new DuplicatePeople($this->user))
+            ->byName($name)
+            ->load(['categoryValues.category', 'categoryValues.option']);
     }
 
     /**
