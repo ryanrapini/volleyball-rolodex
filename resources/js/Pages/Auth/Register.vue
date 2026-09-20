@@ -24,10 +24,8 @@ const submit = () => {
     <GuestLayout>
         <Head title="Register" />
 
-        <h1 class="font-sans text-2xl font-bold uppercase tracking-tight text-ink">
-            Create your rolodex
-        </h1>
-        <p class="mt-2 font-mono text-xs text-ink/70">
+        <h1 class="text-2xl font-semibold text-gray-900">Create your rolodex</h1>
+        <p class="mt-2 text-sm text-gray-600">
             Your people and categories are private to your account.
         </p>
 
@@ -90,7 +88,9 @@ const submit = () => {
             </div>
 
             <div class="mt-6 flex items-center justify-between gap-3">
-                <Link :href="route('login')" class="link text-sm">Already registered?</Link>
+                <Link :href="route('login')" class="text-sm font-medium text-blue-600 hover:underline">
+                    Already registered?
+                </Link>
 
                 <PrimaryButton :disabled="form.processing">Register</PrimaryButton>
             </div>

@@ -4,6 +4,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Link, useForm, usePage } from '@inertiajs/vue3';
+import Message from 'primevue/message';
 
 defineProps({
     mustVerifyEmail: {
@@ -25,11 +26,11 @@ const form = useForm({
 <template>
     <section>
         <header>
-            <h2 class="font-sans text-lg font-bold uppercase tracking-tight text-ink">
+            <h2 class="text-lg font-semibold text-gray-900">
                 Profile Information
             </h2>
 
-            <p class="mt-1 font-mono text-xs text-ink/60">
+            <p class="mt-1 text-sm text-gray-600">
                 Update your account's profile information and email address.
             </p>
         </header>
@@ -68,24 +69,24 @@ const form = useForm({
             </div>
 
             <div v-if="mustVerifyEmail && user.email_verified_at === null">
-                <p class="mt-2 font-mono text-xs text-ink">
+                <p class="mt-2 text-sm text-gray-800">
                     Your email address is unverified.
                     <Link
                         :href="route('verification.send')"
                         method="post"
                         as="button"
-                        class="link text-sm"
+                        class="text-sm font-medium text-blue-600 hover:underline"
                     >
                         Click here to re-send the verification email.
                     </Link>
                 </p>
 
-                <div
+                <p
                     v-show="status === 'verification-link-sent'"
-                    class="mt-2 font-mono text-xs font-semibold text-ink"
+                    class="mt-2 text-sm font-medium text-gray-900"
                 >
                     A new verification link has been sent to your email address.
-                </div>
+                </p>
             </div>
 
             <div class="flex items-center gap-4">
@@ -97,12 +98,13 @@ const form = useForm({
                     leave-active-class="transition ease-in-out"
                     leave-to-class="opacity-0"
                 >
-                    <p
+                    <Message
                         v-if="form.recentlySuccessful"
-                        class="font-mono text-xs text-ink/60"
+                        severity="success"
+                        :closable="false"
                     >
                         Saved.
-                    </p>
+                    </Message>
                 </Transition>
             </div>
         </form>

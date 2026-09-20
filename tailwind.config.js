@@ -1,6 +1,3 @@
-import defaultTheme from 'tailwindcss/defaultTheme';
-import forms from '@tailwindcss/forms';
-
 /** @type {import('tailwindcss').Config} */
 export default {
     content: [
@@ -10,27 +7,13 @@ export default {
         './resources/js/**/*.vue',
     ],
 
-    theme: {
-        extend: {
-            colors: {
-                ink: '#17204D',
-                paper: '#FFFAFC',
-                riso: {
-                    pink: '#F237A1',
-                    blue: '#2C40A7',
-                },
-            },
-            fontFamily: {
-                sans: ['Space Grotesk', ...defaultTheme.fontFamily.sans],
-                mono: ['Overpass Mono', ...defaultTheme.fontFamily.mono],
-            },
-            boxShadow: {
-                print: '6px 6px 0 #2C40A7',
-                'print-sm': '4px 4px 0 #2C40A7',
-                'print-pink': '6px 6px 0 #F237A1',
-            },
-        },
-    },
+    /*
+     * No theme overrides: PrimeVue's Aura preset owns colours, typography and
+     * elevation now, and Tailwind is only here for layout utilities. The
+     * @tailwindcss/forms plugin is gone with it, since every input in the app
+     * is a PrimeVue component.
+     */
+    theme: {},
 
-    plugins: [forms],
+    plugins: [],
 };

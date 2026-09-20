@@ -2,6 +2,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import CategoryForm from './Partials/CategoryForm.vue';
 import { Head, useForm } from '@inertiajs/vue3';
+import Card from 'primevue/card';
 
 const props = defineProps({
     category: {
@@ -30,21 +31,23 @@ const submit = () => {
 
     <AuthenticatedLayout>
         <template #header>
-            <h1 class="font-sans text-2xl font-bold uppercase tracking-tight text-ink">
+            <h1 class="text-2xl font-semibold text-gray-900">
                 Edit {{ category.name }}
             </h1>
         </template>
 
         <div class="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
-            <div class="card p-6 shadow-print">
-                <CategoryForm
-                    :form="form"
-                    :types="types"
-                    submit-label="Save category"
-                    :cancel-href="route('categories.index')"
-                    @submit="submit"
-                />
-            </div>
+            <Card>
+                <template #content>
+                    <CategoryForm
+                        :form="form"
+                        :types="types"
+                        submit-label="Save category"
+                        :cancel-href="route('categories.index')"
+                        @submit="submit"
+                    />
+                </template>
+            </Card>
         </div>
     </AuthenticatedLayout>
 </template>

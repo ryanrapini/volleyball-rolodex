@@ -35,9 +35,7 @@ const submit = () => {
     <GuestLayout>
         <Head title="Reset Password" />
 
-        <h1 class="font-sans text-2xl font-bold uppercase tracking-tight text-ink">
-            Choose a new password
-        </h1>
+        <h1 class="text-2xl font-semibold text-gray-900">Choose a new password</h1>
 
         <form class="mt-6" @submit.prevent="submit">
             <div>

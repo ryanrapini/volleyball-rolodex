@@ -1,9 +1,10 @@
 <script setup>
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Link } from '@inertiajs/vue3';
+import Button from 'primevue/button';
+import RadioButton from 'primevue/radiobutton';
 import { computed, watch } from 'vue';
 
 const props = defineProps({
@@ -64,26 +65,30 @@ const removeOption = (index) => props.form.options.splice(index, 1);
         </div>
 
         <fieldset>
-            <legend class="label">What kind of answer is it?</legend>
+            <legend class="mb-1 text-sm font-medium text-gray-700">
+                What kind of answer is it?
+            </legend>
 
             <div class="grid gap-3 sm:grid-cols-3">
                 <label
                     v-for="type in types"
                     :key="type.value"
-                    class="cursor-pointer border-2 border-ink p-3 transition-colors duration-100"
-                    :class="form.type === type.value ? 'bg-riso-pink/25 shadow-print-sm' : 'bg-white hover:bg-riso-pink/10'"
+                    class="flex cursor-pointer items-start gap-3 rounded-md border p-3 transition-colors duration-100"
+                    :class="
+                        form.type === type.value
+                            ? 'border-gray-900 bg-gray-100'
+                            : 'border-gray-200 hover:bg-gray-50'
+                    "
                 >
-                    <input
-                        type="radio"
-                        class="sr-only"
-                        :value="type.value"
-                        v-model="form.type"
-                    />
-                    <span class="block font-sans text-sm font-bold uppercase tracking-tight text-ink">
-                        {{ type.label }}
-                    </span>
-                    <span class="mt-1 block font-mono text-[0.7rem] leading-snug text-ink/60">
-                        {{ type.hint }}
+                    <RadioButton v-model="form.type" :value="type.value" />
+
+                    <span class="min-w-0">
+                        <span class="block text-sm font-semibold text-gray-900">
+                            {{ type.label }}
+                        </span>
+                        <span class="mt-1 block text-xs leading-snug text-gray-500">
+                            {{ type.hint }}
+                        </span>
                     </span>
                 </label>
             </div>
@@ -100,7 +105,7 @@ const removeOption = (index) => props.form.options.splice(index, 1);
                     :key="index"
                     class="flex items-center gap-2"
                 >
-                    <span class="w-6 shrink-0 font-mono text-xs text-ink/40">
+                    <span class="w-6 shrink-0 text-xs text-gray-400">
                         {{ index + 1 }}
                     </span>
 
@@ -111,32 +116,41 @@ const removeOption = (index) => props.form.options.splice(index, 1);
                         placeholder="Choice"
                     />
 
-                    <button
+                    <Button
                         type="button"
-                        class="btn btn-secondary shrink-0 px-3"
+                        icon="pi pi-times"
+                        text
+                        severity="secondary"
+                        class="shrink-0"
                         :aria-label="`Remove choice ${index + 1}`"
                         @click="removeOption(index)"
-                    >
-                        ×
-                    </button>
+                    />
                 </div>
             </div>
 
-            <button type="button" class="btn btn-secondary mt-3" @click="addOption">
-                Add choice
-            </button>
+            <Button
+                type="button"
+                icon="pi pi-plus"
+                label="Add choice"
+                severity="secondary"
+                outlined
+                class="mt-3"
+                @click="addOption"
+            />
 
             <InputError class="mt-2" :message="form.errors.options" />
         </div>
 
-        <p v-else class="font-mono text-xs text-ink/60">
+        <p v-else class="text-xs text-gray-500">
             A yes / no category needs no choices — people are simply marked yes or left unset.
         </p>
 
-        <div class="flex flex-wrap items-center gap-3 border-t-2 border-ink/10 pt-5">
-            <PrimaryButton :disabled="form.processing">{{ submitLabel }}</PrimaryButton>
+        <div class="flex flex-wrap items-center gap-3 border-t border-gray-200 pt-5">
+            <Button type="submit" :label="submitLabel" :disabled="form.processing" />
 
-            <Link :href="cancelHref" class="btn btn-secondary">Cancel</Link>
+            <Button asChild severity="secondary" outlined>
+                <Link :href="cancelHref">Cancel</Link>
+            </Button>
         </div>
     </form>
 </template>

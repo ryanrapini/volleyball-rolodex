@@ -6,6 +6,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import Message from 'primevue/message';
 
 defineProps({
     canResetPassword: {
@@ -33,14 +34,11 @@ const submit = () => {
     <GuestLayout>
         <Head title="Log in" />
 
-        <h1 class="font-sans text-2xl font-bold uppercase tracking-tight text-ink">Log in</h1>
+        <h1 class="text-2xl font-semibold text-gray-900">Log in</h1>
 
-        <div
-            v-if="status"
-            class="mt-4 inline-block bg-riso-pink/25 px-2 py-1 font-mono text-xs font-semibold text-ink"
-        >
+        <Message v-if="status" severity="success" :closable="false" class="mt-4">
             {{ status }}
-        </div>
+        </Message>
 
         <form class="mt-6" @submit.prevent="submit">
             <div>
@@ -75,14 +73,16 @@ const submit = () => {
             <div class="mt-4 block">
                 <label class="flex items-center">
                     <Checkbox name="remember" v-model:checked="form.remember" />
-                    <span class="ms-2 font-mono text-xs font-semibold uppercase tracking-widest text-ink">
-                        Remember me
-                    </span>
+                    <span class="ms-2 text-sm text-gray-700">Remember me</span>
                 </label>
             </div>
 
             <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
-                <Link v-if="canResetPassword" :href="route('password.request')" class="link text-sm">
+                <Link
+                    v-if="canResetPassword"
+                    :href="route('password.request')"
+                    class="text-sm font-medium text-blue-600 hover:underline"
+                >
                     Forgot your password?
                 </Link>
                 <span v-else></span>
@@ -91,9 +91,11 @@ const submit = () => {
             </div>
         </form>
 
-        <p class="mt-6 border-t-2 border-ink/10 pt-4 font-mono text-xs text-ink/70">
+        <p class="mt-6 border-t border-gray-200 pt-4 text-sm text-gray-600">
             No account yet?
-            <Link :href="route('register')" class="link">Sign up</Link>
+            <Link :href="route('register')" class="font-medium text-blue-600 hover:underline">
+                Sign up
+            </Link>
         </p>
     </GuestLayout>
 </template>

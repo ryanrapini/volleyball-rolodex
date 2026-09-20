@@ -4,6 +4,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { useForm } from '@inertiajs/vue3';
+import Message from 'primevue/message';
 import { ref } from 'vue';
 
 const passwordInput = ref(null);
@@ -15,6 +16,25 @@ const form = useForm({
     password_confirmation: '',
 });
 
+/*
+ * TextInput is a thin wrapper around PrimeVue's InputText, so the ref may be
+ * the wrapper (which exposes no methods) rather than the input itself. Reach
+ * for focus() when it exists, otherwise fall back to the rendered root element.
+ */
+const focusField = (target) => {
+    const field = target?.value;
+
+    if (!field) {
+        return;
+    }
+
+    if (typeof field.focus === 'function') {
+        field.focus();
+    } else {
+        field.$el?.focus?.();
+    }
+};
+
 const updatePassword = () => {
     form.put(route('password.update'), {
         preserveScroll: true,
@@ -22,11 +42,11 @@ const updatePassword = () => {
         onError: () => {
             if (form.errors.password) {
                 form.reset('password', 'password_confirmation');
-                passwordInput.value.focus();
+                focusField(passwordInput);
             }
             if (form.errors.current_password) {
                 form.reset('current_password');
-                currentPasswordInput.value.focus();
+                focusField(currentPasswordInput);
             }
         },
     });
@@ -36,11 +56,9 @@ const updatePassword = () => {
 <template>
     <section>
         <header>
-            <h2 class="font-sans text-lg font-bold uppercase tracking-tight text-ink">
-                Update Password
-            </h2>
+            <h2 class="text-lg font-semibold text-gray-900">Update Password</h2>
 
-            <p class="mt-1 font-mono text-xs text-ink/60">
+            <p class="mt-1 text-sm text-gray-600">
                 Ensure your account is using a long, random password to stay
                 secure.
             </p>
@@ -106,12 +124,13 @@ const updatePassword = () => {
                     leave-active-class="transition ease-in-out"
                     leave-to-class="opacity-0"
                 >
-                    <p
+                    <Message
                         v-if="form.recentlySuccessful"
-                        class="font-mono text-xs text-ink/60"
+                        severity="success"
+                        :closable="false"
                     >
                         Saved.
-                    </p>
+                    </Message>
                 </Transition>
             </div>
         </form>

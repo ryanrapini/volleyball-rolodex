@@ -15,17 +15,36 @@ const form = useForm({
     password: '',
 });
 
+/*
+ * TextInput is a thin wrapper around PrimeVue's InputText, so the ref may be
+ * the wrapper (which exposes no methods) rather than the input itself. Reach
+ * for focus() when it exists, otherwise fall back to the rendered root element.
+ */
+const focusField = (target) => {
+    const field = target?.value;
+
+    if (!field) {
+        return;
+    }
+
+    if (typeof field.focus === 'function') {
+        field.focus();
+    } else {
+        field.$el?.focus?.();
+    }
+};
+
 const confirmUserDeletion = () => {
     confirmingUserDeletion.value = true;
 
-    nextTick(() => passwordInput.value.focus());
+    nextTick(() => focusField(passwordInput));
 };
 
 const deleteUser = () => {
     form.delete(route('profile.destroy'), {
         preserveScroll: true,
         onSuccess: () => closeModal(),
-        onError: () => passwordInput.value.focus(),
+        onError: () => focusField(passwordInput),
         onFinish: () => form.reset(),
     });
 };
@@ -41,11 +60,9 @@ const closeModal = () => {
 <template>
     <section class="space-y-6">
         <header>
-            <h2 class="font-sans text-lg font-bold uppercase tracking-tight text-ink">
-                Delete Account
-            </h2>
+            <h2 class="text-lg font-semibold text-gray-900">Delete Account</h2>
 
-            <p class="mt-1 font-mono text-xs text-ink/60">
+            <p class="mt-1 text-sm text-gray-600">
                 Once your account is deleted, all of its resources and data will
                 be permanently deleted. Before deleting your account, please
                 download any data or information that you wish to retain.
@@ -54,54 +71,38 @@ const closeModal = () => {
 
         <DangerButton @click="confirmUserDeletion">Delete Account</DangerButton>
 
-        <Modal :show="confirmingUserDeletion" @close="closeModal">
-            <div class="p-6">
-                <h2
-                    class="font-sans text-lg font-bold uppercase tracking-tight text-ink"
-                >
-                    Are you sure you want to delete your account?
-                </h2>
+        <Modal :show="confirmingUserDeletion" max-width="md" @close="closeModal">
+            <h2 class="text-lg font-semibold text-gray-900">
+                Are you sure you want to delete your account?
+            </h2>
 
-                <p class="mt-1 font-mono text-xs text-ink/60">
-                    Once your account is deleted, all of its resources and data
-                    will be permanently deleted. Please enter your password to
-                    confirm you would like to permanently delete your account.
-                </p>
+            <p class="mt-1 text-sm text-gray-600">
+                Once your account is deleted, all of its resources and data will
+                be permanently deleted. Please enter your password to confirm
+                you would like to permanently delete your account.
+            </p>
 
-                <div class="mt-6">
-                    <InputLabel
-                        for="password"
-                        value="Password"
-                        class="sr-only"
-                    />
+            <div class="mt-6">
+                <InputLabel for="password" value="Password" class="sr-only" />
 
-                    <TextInput
-                        id="password"
-                        ref="passwordInput"
-                        v-model="form.password"
-                        type="password"
-                        class="mt-1 block w-3/4"
-                        placeholder="Password"
-                        @keyup.enter="deleteUser"
-                    />
+                <TextInput
+                    id="password"
+                    ref="passwordInput"
+                    v-model="form.password"
+                    type="password"
+                    placeholder="Password"
+                    @keyup.enter="deleteUser"
+                />
 
-                    <InputError :message="form.errors.password" class="mt-2" />
-                </div>
+                <InputError :message="form.errors.password" class="mt-2" />
+            </div>
 
-                <div class="mt-6 flex justify-end">
-                    <SecondaryButton @click="closeModal">
-                        Cancel
-                    </SecondaryButton>
+            <div class="mt-6 flex justify-end gap-3">
+                <SecondaryButton @click="closeModal">Cancel</SecondaryButton>
 
-                    <DangerButton
-                        class="ms-3"
-                        :class="{ 'opacity-25': form.processing }"
-                        :disabled="form.processing"
-                        @click="deleteUser"
-                    >
-                        Delete Account
-                    </DangerButton>
-                </div>
+                <DangerButton :disabled="form.processing" @click="deleteUser">
+                    Delete Account
+                </DangerButton>
             </div>
         </Modal>
     </section>

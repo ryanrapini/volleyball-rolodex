@@ -5,6 +5,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, useForm } from '@inertiajs/vue3';
+import Message from 'primevue/message';
 
 defineProps({
     status: {
@@ -25,20 +26,15 @@ const submit = () => {
     <GuestLayout>
         <Head title="Forgot Password" />
 
-        <h1 class="font-sans text-2xl font-bold uppercase tracking-tight text-ink">
-            Reset password
-        </h1>
+        <h1 class="text-2xl font-semibold text-gray-900">Reset password</h1>
 
-        <p class="mt-2 font-mono text-xs leading-relaxed text-ink/70">
+        <p class="mt-2 text-sm text-gray-600">
             Enter your email address and we'll send you a link to choose a new password.
         </p>
 
-        <div
-            v-if="status"
-            class="mt-4 inline-block bg-riso-pink/25 px-2 py-1 font-mono text-xs font-semibold text-ink"
-        >
+        <Message v-if="status" severity="success" :closable="false" class="mt-4">
             {{ status }}
-        </div>
+        </Message>
 
         <form class="mt-6" @submit.prevent="submit">
             <div>

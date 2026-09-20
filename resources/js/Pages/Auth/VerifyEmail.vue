@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import GuestLayout from '@/Layouts/GuestLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import Message from 'primevue/message';
 
 const props = defineProps({
     status: {
@@ -23,21 +24,16 @@ const verificationLinkSent = computed(() => props.status === 'verification-link-
     <GuestLayout>
         <Head title="Email Verification" />
 
-        <h1 class="font-sans text-2xl font-bold uppercase tracking-tight text-ink">
-            Verify your email
-        </h1>
+        <h1 class="text-2xl font-semibold text-gray-900">Verify your email</h1>
 
-        <p class="mt-2 font-mono text-xs leading-relaxed text-ink/70">
+        <p class="mt-2 text-sm text-gray-600">
             Click the link we just emailed you to finish setting up your account. Didn't get
             it? We'll send another.
         </p>
 
-        <div
-            v-if="verificationLinkSent"
-            class="mt-4 inline-block bg-riso-pink/25 px-2 py-1 font-mono text-xs font-semibold text-ink"
-        >
+        <Message v-if="verificationLinkSent" severity="success" :closable="false" class="mt-4">
             A new verification link has been sent to your email address.
-        </div>
+        </Message>
 
         <form class="mt-6" @submit.prevent="submit">
             <div class="flex flex-wrap items-center justify-between gap-3">
@@ -45,7 +41,12 @@ const verificationLinkSent = computed(() => props.status === 'verification-link-
                     Resend verification email
                 </PrimaryButton>
 
-                <Link :href="route('logout')" method="post" as="button" class="link text-sm">
+                <Link
+                    :href="route('logout')"
+                    method="post"
+                    as="button"
+                    class="cursor-pointer text-sm font-medium text-blue-600 hover:underline"
+                >
                     Log out
                 </Link>
             </div>

@@ -1,9 +1,10 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import DangerButton from '@/Components/DangerButton.vue';
 import Modal from '@/Components/Modal.vue';
-import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import Button from 'primevue/button';
+import Card from 'primevue/card';
+import Tag from 'primevue/tag';
 import { ref } from 'vue';
 
 defineProps({
@@ -40,94 +41,103 @@ const deleteCategory = () => {
         <template #header>
             <div class="flex flex-wrap items-end justify-between gap-4">
                 <div>
-                    <h1 class="font-sans text-2xl font-bold uppercase tracking-tight text-ink">
-                        Categories
-                    </h1>
-                    <p class="mt-1 font-mono text-xs text-ink/60">
+                    <h1 class="text-2xl font-semibold text-gray-900">Categories</h1>
+                    <p class="mt-1 text-sm text-gray-600">
                         How you sort the people in your rolodex
                     </p>
                 </div>
 
-                <Link :href="route('categories.create')" class="btn btn-primary">
-                    New category
-                </Link>
+                <Button asChild>
+                    <Link :href="route('categories.create')">New category</Link>
+                </Button>
             </div>
         </template>
 
         <div class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-            <div v-if="categories.length === 0" class="card p-8 text-center shadow-print-sm">
-                <p class="font-sans text-lg font-bold text-ink">No categories yet.</p>
-                <p class="mt-2 font-mono text-xs text-ink/60">
-                    Add the things you care about — who can set, who's under six feet, who plays
-                    beach.
-                </p>
-                <Link :href="route('categories.create')" class="btn btn-primary mt-5">
-                    Add your first category
-                </Link>
-            </div>
+            <Card v-if="categories.length === 0">
+                <template #content>
+                    <div class="text-center">
+                        <p class="text-lg font-semibold text-gray-900">No categories yet.</p>
+                        <p class="mt-2 text-sm text-gray-500">
+                            Add the things you care about — who can set, who's under six feet, who
+                            plays beach.
+                        </p>
+                        <div class="mt-5">
+                            <Button asChild>
+                                <Link :href="route('categories.create')">
+                                    Add your first category
+                                </Link>
+                            </Button>
+                        </div>
+                    </div>
+                </template>
+            </Card>
 
             <ul v-else class="space-y-4">
-                <li
-                    v-for="category in categories"
-                    :key="category.id"
-                    class="card p-5 shadow-print-sm"
-                >
-                    <div class="flex flex-wrap items-start justify-between gap-3">
-                        <div class="min-w-0">
-                            <h2 class="font-sans text-base font-bold text-ink">
-                                {{ category.name }}
-                            </h2>
-                            <p class="mt-0.5 font-mono text-[0.7rem] uppercase tracking-widest text-ink/50">
-                                {{ category.type_label }}
-                            </p>
-                        </div>
+                <li v-for="category in categories" :key="category.id">
+                    <Card>
+                        <template #content>
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <h2 class="text-base font-semibold text-gray-900">
+                                        {{ category.name }}
+                                    </h2>
+                                    <p class="mt-0.5 text-xs uppercase tracking-widest text-gray-400">
+                                        {{ category.type_label }}
+                                    </p>
+                                </div>
 
-                        <div class="flex shrink-0 gap-2">
-                            <Link
-                                :href="route('categories.edit', category.id)"
-                                class="btn btn-secondary px-3 py-1.5 text-xs"
-                            >
-                                Edit
-                            </Link>
-                            <button
-                                type="button"
-                                class="btn btn-danger px-3 py-1.5 text-xs"
-                                @click="askToDelete(category)"
-                            >
-                                Delete
-                            </button>
-                        </div>
-                    </div>
+                                <div class="flex shrink-0 gap-2">
+                                    <Button asChild severity="secondary" outlined size="small">
+                                        <Link :href="route('categories.edit', category.id)">
+                                            Edit
+                                        </Link>
+                                    </Button>
 
-                    <div v-if="category.has_options" class="mt-3 flex flex-wrap gap-1.5">
-                        <span v-for="option in category.options" :key="option.id" class="tag">
-                            {{ option.label }}
-                        </span>
-                    </div>
-                    <p v-else class="mt-3 font-mono text-xs text-ink/50">
-                        Yes / no
-                    </p>
+                                    <Button
+                                        severity="danger"
+                                        size="small"
+                                        label="Delete"
+                                        @click="askToDelete(category)"
+                                    />
+                                </div>
+                            </div>
+
+                            <div v-if="category.has_options" class="mt-3 flex flex-wrap gap-1.5">
+                                <Tag
+                                    v-for="option in category.options"
+                                    :key="option.id"
+                                    :value="option.label"
+                                    severity="secondary"
+                                />
+                            </div>
+                            <p v-else class="mt-3 text-xs text-gray-500">Yes / no</p>
+                        </template>
+                    </Card>
                 </li>
             </ul>
         </div>
 
         <Modal :show="confirming !== null" @close="closeModal">
-            <div v-if="confirming" class="p-6">
-                <h2 class="font-sans text-lg font-bold uppercase tracking-tight text-ink">
+            <div v-if="confirming">
+                <h2 class="text-lg font-semibold text-gray-900">
                     Delete “{{ confirming.name }}”?
                 </h2>
 
-                <p class="mt-3 font-mono text-xs leading-relaxed text-ink/70">
+                <p class="mt-3 text-sm leading-relaxed text-gray-600">
                     This removes the category and every answer recorded against it. There is no
                     undo.
                 </p>
 
                 <div class="mt-6 flex justify-end gap-3">
-                    <SecondaryButton @click="closeModal">Keep it</SecondaryButton>
+                    <Button severity="secondary" outlined label="Keep it" @click="closeModal" />
 
-                    <DangerButton :disabled="form.processing" @click="deleteCategory">
-                        Yes, delete
-                    </DangerButton>
+                    <Button
+                        severity="danger"
+                        label="Yes, delete"
+                        :disabled="form.processing"
+                        @click="deleteCategory"
+                    />
                 </div>
             </div>
         </Modal>
