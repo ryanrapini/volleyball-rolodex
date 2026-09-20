@@ -48,6 +48,17 @@ const props = defineProps({
         type: String,
         default: null,
     },
+    // Declared rather than left to attribute fallthrough: PrimeVue's Button
+    // hands its own a11yAttrs down as slot props, and spreading those over the
+    // anchor drops anything set here.
+    title: {
+        type: String,
+        default: null,
+    },
+    ariaLabel: {
+        type: String,
+        default: null,
+    },
 });
 
 const attrs = useAttrs();
@@ -93,7 +104,9 @@ const rest = computed(() => {
             v-if="external"
             :href="href"
             :class="[classes, attrs.class]"
-            v-bind="{ ...rest, ...a11yAttrs }"
+            :title="title"
+            :aria-label="ariaLabel"
+            v-bind="{ ...a11yAttrs, ...rest }"
         >
             <slot>{{ label }}</slot>
         </a>
@@ -101,7 +114,9 @@ const rest = computed(() => {
             v-else
             :href="href"
             :class="[classes, attrs.class]"
-            v-bind="{ ...rest, ...a11yAttrs }"
+            :title="title"
+            :aria-label="ariaLabel"
+            v-bind="{ ...a11yAttrs, ...rest }"
         >
             <slot>{{ label }}</slot>
         </Link>

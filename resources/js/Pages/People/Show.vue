@@ -83,15 +83,16 @@ const deletePerson = () => {
                             :image="person.photo_url"
                             shape="square"
                             size="xlarge"
-                            class="h-24 w-24 sm:h-40 sm:w-40"
                             :pt="{ image: { style: 'object-fit: cover; width: 100%; height: 100%' } }"
                         />
+                        <!-- PrimeVue's size classes win over Tailwind utilities,
+                             so the size prop is the only lever here. -->
                         <Avatar
                             v-else
                             :label="initials"
                             shape="square"
                             size="xlarge"
-                            class="h-24 w-24 bg-gray-100 text-2xl text-gray-500 sm:h-40 sm:w-40 sm:text-3xl"
+                            class="bg-gray-100 text-2xl text-gray-500"
                         />
 
                         <div class="min-w-0 flex-1">
