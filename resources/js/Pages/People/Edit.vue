@@ -8,6 +8,14 @@ const props = defineProps({
         type: Object,
         required: true,
     },
+    categories: {
+        type: Array,
+        default: () => [],
+    },
+    answers: {
+        type: Object,
+        default: () => ({}),
+    },
 });
 
 const form = useForm({
@@ -17,10 +25,26 @@ const form = useForm({
     notes: props.person.notes ?? '',
     photo: null,
     remove_photo: false,
+    answers: Object.fromEntries(
+        props.categories.map((category) => [
+            category.id,
+            {
+                value: props.answers[category.id]?.value ?? null,
+                option_id: props.answers[category.id]?.option_id ?? null,
+                option_ids: [...(props.answers[category.id]?.option_ids ?? [])],
+            },
+        ]),
+    ),
 });
 
 const submit = () => {
-    form.patch(route('people.update', props.person.id));
+    form.transform((data) => ({
+        ...data,
+        answers: Object.entries(data.answers).map(([category_id, answer]) => ({
+            category_id,
+            ...answer,
+        })),
+    })).patch(route('people.update', props.person.id));
 };
 </script>
 
@@ -38,6 +62,7 @@ const submit = () => {
             <div class="card p-6 shadow-print">
                 <PersonForm
                     :form="form"
+                    :categories="categories"
                     submit-label="Save changes"
                     :cancel-href="route('people.show', person.id)"
                     :current-photo-url="person.photo_url"

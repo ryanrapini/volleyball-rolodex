@@ -43,4 +43,14 @@ class Category extends Model
     {
         return $this->hasMany(CategoryOption::class)->orderBy('position')->orderBy('label');
     }
+
+    /**
+     * Answers recorded against this category, across every person.
+     *
+     * @return HasMany<PersonCategoryValue, $this>
+     */
+    public function values(): HasMany
+    {
+        return $this->hasMany(PersonCategoryValue::class);
+    }
 }

@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\PersonRequest;
+use App\Models\Category;
+use App\Models\CategoryOption;
 use App\Models\Person;
+use App\Support\PersonAnswers;
 use App\Support\PersonPhotos;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -28,6 +31,7 @@ class PersonController extends Controller
             ->when($term !== '', fn (Builder $query) => $query->where(
                 fn (Builder $search) => $this->applySearch($search, $term),
             ))
+            ->with(['categoryValues.category', 'categoryValues.option'])
             ->orderBy('name')
             ->paginate(60)
             ->withQueryString()
@@ -38,6 +42,7 @@ class PersonController extends Controller
                 'email' => $person->email,
                 'photo_url' => PersonPhotos::url($person->photo_path),
                 'notes_excerpt' => Str::limit((string) $person->notes, 120),
+                'tags' => $person->categoryTags(),
             ]);
 
         return Inertia::render('People/Index', [
@@ -46,20 +51,27 @@ class PersonController extends Controller
         ]);
     }
 
-    public function create(): Response
+    public function create(Request $request): Response
     {
-        return Inertia::render('People/Create');
+        $categories = $request->user()->categories()->with('options')->get();
+
+        return Inertia::render('People/Create', [
+            'categories' => $this->presentCategories($categories),
+            'answers' => PersonAnswers::blank($categories),
+        ]);
     }
 
     public function store(PersonRequest $request): RedirectResponse
     {
         $person = $request->user()->people()->create(
-            $request->safe()->except(['photo', 'remove_photo']),
+            $request->safe()->except(['photo', 'remove_photo', 'answers']),
         );
 
         if ($request->hasFile('photo')) {
             PersonPhotos::store($person, $request->file('photo'));
         }
+
+        PersonAnswers::sync($person, $request->answers(), $request->categories());
 
         return redirect()
             ->route('people.show', $person)
@@ -70,6 +82,8 @@ class PersonController extends Controller
     {
         $this->authorize('view', $person);
 
+        $person->load(['categoryValues.category', 'categoryValues.option']);
+
         return Inertia::render('People/Show', [
             'person' => [
                 'id' => $person->id,
@@ -78,13 +92,16 @@ class PersonController extends Controller
                 'email' => $person->email,
                 'notes' => $person->notes,
                 'photo_url' => PersonPhotos::url($person->photo_path),
+                'answer_groups' => $person->answerGroups(),
             ],
         ]);
     }
 
-    public function edit(Person $person): Response
+    public function edit(Request $request, Person $person): Response
     {
         $this->authorize('update', $person);
+
+        $categories = $request->user()->categories()->with('options')->get();
 
         return Inertia::render('People/Edit', [
             'person' => [
@@ -95,6 +112,8 @@ class PersonController extends Controller
                 'notes' => $person->notes,
                 'photo_url' => PersonPhotos::url($person->photo_path),
             ],
+            'categories' => $this->presentCategories($categories),
+            'answers' => PersonAnswers::forPerson($person, $categories),
         ]);
     }
 
@@ -102,7 +121,7 @@ class PersonController extends Controller
     {
         $this->authorize('update', $person);
 
-        $person->update($request->safe()->except(['photo', 'remove_photo']));
+        $person->update($request->safe()->except(['photo', 'remove_photo', 'answers']));
 
         if ($request->hasFile('photo')) {
             PersonPhotos::store($person, $request->file('photo'));
@@ -111,6 +130,8 @@ class PersonController extends Controller
             $person->photo_path = null;
             $person->save();
         }
+
+        PersonAnswers::sync($person, $request->answers(), $request->categories());
 
         return redirect()
             ->route('people.show', $person)
@@ -127,6 +148,29 @@ class PersonController extends Controller
         return redirect()
             ->route('people.index')
             ->with('status', 'Removed '.$name.'.');
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, Category>  $categories
+     * @return array<int, array<string, mixed>>
+     */
+    private function presentCategories($categories): array
+    {
+        return $categories
+            ->map(fn (Category $category): array => [
+                'id' => $category->id,
+                'name' => $category->name,
+                'type' => $category->type->value,
+                'options' => $category->options
+                    ->map(fn (CategoryOption $option): array => [
+                        'id' => $option->id,
+                        'label' => $option->label,
+                    ])
+                    ->values()
+                    ->all(),
+            ])
+            ->values()
+            ->all();
     }
 
     /**

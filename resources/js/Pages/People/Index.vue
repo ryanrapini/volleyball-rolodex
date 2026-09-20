@@ -158,6 +158,15 @@ const initials = (name) =>
                             >
                                 {{ person.notes_excerpt }}
                             </span>
+
+                            <span
+                                v-if="person.tags.length"
+                                class="mt-3 flex flex-wrap gap-1.5"
+                            >
+                                <span v-for="tag in person.tags" :key="tag" class="tag">
+                                    {{ tag }}
+                                </span>
+                            </span>
                         </span>
                     </Link>
                 </li>

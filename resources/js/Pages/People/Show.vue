@@ -127,6 +127,26 @@ const deletePerson = () => {
                 </div>
             </section>
 
+            <!-- Category answers -->
+            <section v-if="person.answer_groups.length" class="card p-6 shadow-print-sm">
+                <h2 class="label">Details</h2>
+
+                <dl class="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div
+                        v-for="group in person.answer_groups"
+                        :key="group.name"
+                        class="border-l-4 border-riso-blue/30 pl-3"
+                    >
+                        <dt class="font-mono text-xs uppercase tracking-widest text-ink/50">
+                            {{ group.name }}
+                        </dt>
+                        <dd class="font-sans text-base text-ink">
+                            {{ group.answer }}
+                        </dd>
+                    </div>
+                </dl>
+            </section>
+
             <!-- Notes -->
             <section class="card p-6 shadow-print-sm">
                 <h2 class="label">Notes</h2>
