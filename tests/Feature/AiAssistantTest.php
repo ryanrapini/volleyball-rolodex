@@ -239,6 +239,44 @@ test('a recording is turned into text', function () {
     Http::assertSent(fn ($request) => str_contains($request->url(), '/audio/transcriptions'));
 });
 
+test('a long message is passed through rather than rejected', function () {
+    [$user] = assistantFixture();
+
+    Http::fake(['*' => Http::response(completion(['content' => 'Got it.']))]);
+
+    // A pasted list of names is a reasonable thing to send.
+    $long = str_repeat('Marcus Hale can set. ', 2000);
+
+    $this->actingAs($user)->postJson(route('ai.chat'), [
+        'messages' => [['role' => 'user', 'content' => $long]],
+    ])->assertOk()->assertJsonPath('reply', 'Got it.');
+
+    Http::assertSent(function ($request) use ($long) {
+        $messages = $request->data()['messages'] ?? [];
+        // TrimStrings runs first, so compare against the trimmed message.
+        $sent = $messages[1]['content'] ?? '';
+
+        return strlen($sent) > 20000 && $sent === trim($long);
+    });
+});
+
+test('a transcript too long for the model says so instead of failing vaguely', function () {
+    [$user] = assistantFixture();
+
+    Http::fake(['*' => Http::response([
+        'error' => ['message' => "This model's maximum context length is 128000 tokens"],
+    ], 400)]);
+
+    $this->actingAs($user)->postJson(route('ai.chat'), [
+        'messages' => [['role' => 'user', 'content' => 'hi']],
+    ])
+        ->assertStatus(422)
+        ->assertJsonPath(
+            'error',
+            'That conversation is longer than the model can read. Clear the transcript and try again.',
+        );
+});
+
 test('the transcript cannot be used to smuggle a system message', function () {
     [$user] = assistantFixture();
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\Ai\RolodexAssistant;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -19,9 +20,12 @@ class AiChatController extends Controller
     public function chat(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'messages' => ['present', 'array', 'max:40'],
+            'messages' => ['present', 'array', 'max:200'],
             'messages.*.role' => ['required', 'string', 'in:user,assistant'],
-            'messages.*.content' => ['required', 'string', 'max:4000'],
+            // No length cap on a single message: a long paste of names is a
+            // reasonable thing to send. The ceiling is the model's context
+            // window, which is reported back clearly if it is reached.
+            'messages.*.content' => ['required', 'string'],
         ]);
 
         if (! RolodexAssistant::isConfigured()) {
@@ -32,6 +36,16 @@ class AiChatController extends Controller
 
         try {
             $result = (new RolodexAssistant($request->user()))->reply($data['messages']);
+        } catch (RequestException $e) {
+            report($e);
+
+            if ($this->ranOutOfContext($e)) {
+                return response()->json([
+                    'error' => 'That conversation is longer than the model can read. Clear the transcript and try again.',
+                ], 422);
+            }
+
+            return response()->json(['error' => 'The assistant could not be reached just now.'], 502);
         } catch (Throwable $e) {
             report($e);
 
@@ -39,6 +53,18 @@ class AiChatController extends Controller
         }
 
         return response()->json($result);
+    }
+
+    /**
+     * The model rejects a transcript that no longer fits its context window with
+     * a 400; saying which limit was hit beats a generic failure.
+     */
+    private function ranOutOfContext(RequestException $e): bool
+    {
+        $body = mb_strtolower((string) $e->response?->body());
+
+        return $e->response?->status() === 400
+            && (str_contains($body, 'context') || str_contains($body, 'too long'));
     }
 
     /**
