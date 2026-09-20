@@ -11,6 +11,7 @@ use App\Support\PersonAnswers;
 use App\Support\PersonPhotos;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -138,6 +139,67 @@ class PersonController extends Controller
     {
         $this->authorize('update', $person);
 
+        $this->applyUpdate($request, $person);
+
+        return redirect()
+            ->route('people.show', $person)
+            ->with('status', 'Saved '.$person->name.'.');
+    }
+
+    /**
+     * What the quick-edit popup needs: the full record (the list only carries an
+     * excerpt of the notes), the owner's categories, and this person's answers.
+     */
+    public function quickEdit(Request $request, Person $person): JsonResponse
+    {
+        $this->authorize('update', $person);
+
+        $categories = $request->user()->categories()->with('options')->get();
+
+        return response()->json([
+            'person' => [
+                'id' => $person->id,
+                'name' => $person->name,
+                'phone' => $person->phone,
+                'email' => $person->email,
+                'notes' => $person->notes,
+                'photo_url' => PersonPhotos::url($person->photo_path),
+            ],
+            'categories' => $this->presentCategories($categories),
+            'answers' => PersonAnswers::forPerson($person, $categories),
+        ]);
+    }
+
+    /**
+     * Save from the quick-edit popup and hand back the card's data, so the list
+     * can update without a round trip through the detail page.
+     */
+    public function quickUpdate(PersonRequest $request, Person $person): JsonResponse
+    {
+        $this->authorize('update', $person);
+
+        $this->applyUpdate($request, $person);
+
+        $person->load(['categoryValues.category', 'categoryValues.option']);
+
+        return response()->json([
+            'person' => [
+                'id' => $person->id,
+                'name' => $person->name,
+                'phone' => $person->phone,
+                'email' => $person->email,
+                'photo_url' => PersonPhotos::url($person->photo_path),
+                'notes_excerpt' => Str::limit((string) $person->notes, 120),
+                'tags' => $person->categoryTags(),
+            ],
+        ]);
+    }
+
+    /**
+     * Everything an edit does, whichever door it came through.
+     */
+    private function applyUpdate(PersonRequest $request, Person $person): void
+    {
         $person->update($request->safe()->except(['photo', 'remove_photo', 'answers']));
 
         if ($request->hasFile('photo')) {
@@ -149,10 +211,6 @@ class PersonController extends Controller
         }
 
         PersonAnswers::sync($person, $request->answers(), $request->categories());
-
-        return redirect()
-            ->route('people.show', $person)
-            ->with('status', 'Saved '.$person->name.'.');
     }
 
     public function destroy(Person $person): RedirectResponse

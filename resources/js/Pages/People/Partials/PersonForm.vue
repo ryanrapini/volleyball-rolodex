@@ -21,7 +21,7 @@ const props = defineProps({
     },
     cancelHref: {
         type: String,
-        required: true,
+        default: null,
     },
     currentPhotoUrl: {
         type: String,
@@ -263,7 +263,10 @@ const toggleOption = (categoryId, optionId) => {
         <div class="flex flex-wrap items-center gap-3 border-t-2 border-ink/10 pt-5">
             <PrimaryButton :disabled="form.processing">{{ submitLabel }}</PrimaryButton>
 
-            <Link :href="cancelHref" class="btn btn-secondary">Cancel</Link>
+            <Link v-if="cancelHref" :href="cancelHref" class="btn btn-secondary">Cancel</Link>
+            <button v-else type="button" class="btn btn-secondary" @click="$emit('cancel')">
+                Cancel
+            </button>
         </div>
     </form>
 </template>

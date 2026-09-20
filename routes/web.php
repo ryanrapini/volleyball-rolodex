@@ -24,6 +24,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('people', PersonController::class);
     Route::resource('categories', CategoryController::class)->except('show');
 
+    // Quick edit from the list: JSON in, JSON out, list stays put. The save is a
+    // POST because PHP only parses multipart bodies for POST, and the popup can
+    // carry a photo.
+    Route::get('/people/{person}/quick-edit', [PersonController::class, 'quickEdit'])->name('people.quick-edit');
+    Route::post('/people/{person}/quick-update', [PersonController::class, 'quickUpdate'])->name('people.quick-update');
+
     Route::post('/ai/chat', [AiChatController::class, 'chat'])->name('ai.chat');
     Route::post('/ai/transcribe', [AiChatController::class, 'transcribe'])->name('ai.transcribe');
 });

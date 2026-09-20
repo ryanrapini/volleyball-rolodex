@@ -1,6 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import InputLabel from '@/Components/InputLabel.vue';
+import QuickEditPersonModal from '@/Components/QuickEditPersonModal.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
@@ -46,6 +47,16 @@ const initials = (name) =>
         .slice(0, 2)
         .map((part) => part[0].toUpperCase())
         .join('');
+
+const editingId = ref(null);
+
+const openQuickEdit = (id) => {
+    editingId.value = id;
+};
+
+const onQuickEditSaved = () => {
+    router.reload({ only: ['people'] });
+};
 
 const visit = () => {
     const params = new URLSearchParams();
@@ -233,10 +244,10 @@ const clearSearch = () => {
 
             <!-- The list -->
             <ul v-else class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <li v-for="person in people.data" :key="person.id">
+                <li v-for="person in people.data" :key="person.id" class="relative">
                     <Link
                         :href="route('people.show', person.id)"
-                        class="card flex h-full gap-3 p-4 transition-transform duration-100 hover:-translate-y-0.5 hover:shadow-print-sm"
+                        class="card flex h-full gap-3 p-4 pb-12 transition-transform duration-100 hover:-translate-y-0.5 hover:shadow-print-sm"
                     >
                         <img
                             v-if="person.photo_url"
@@ -284,8 +295,24 @@ const clearSearch = () => {
                             </span>
                         </span>
                     </Link>
+
+                    <button
+                        type="button"
+                        class="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center border-2 border-ink bg-white text-sm leading-none shadow-print-sm transition-all duration-100 hover:translate-x-[1px] hover:translate-y-[1px] hover:bg-riso-pink hover:shadow-none"
+                        :title="`Quick edit ${person.name}`"
+                        :aria-label="`Quick edit ${person.name}`"
+                        @click="openQuickEdit(person.id)"
+                    >
+                        <span aria-hidden="true">✎</span>
+                    </button>
                 </li>
             </ul>
+
+            <QuickEditPersonModal
+                :person-id="editingId"
+                @close="editingId = null"
+                @saved="onQuickEditSaved"
+            />
 
             <!-- Pagination -->
             <nav
