@@ -48,19 +48,11 @@ const props = defineProps({
         type: String,
         default: null,
     },
-    // Declared rather than left to attribute fallthrough: PrimeVue's Button
-    // hands its own a11yAttrs down as slot props, and spreading those over the
-    // anchor drops anything set here.
-    title: {
-        type: String,
-        default: null,
-    },
-    ariaLabel: {
-        type: String,
-        default: null,
-    },
 });
 
+// A plain reactive object, deliberately not a computed: spreading a ref inside a
+// template expression yields an empty object, which silently drops every
+// attribute — a title, an aria-label — that was meant to reach the anchor.
 const attrs = useAttrs();
 
 // Only pass the variants that were asked for: a null severity would land on the
@@ -90,12 +82,6 @@ const variants = computed(() => {
 
     return passed;
 });
-
-const rest = computed(() => {
-    const { class: ignored, ...others } = attrs;
-
-    return others;
-});
 </script>
 
 <template>
@@ -103,20 +89,16 @@ const rest = computed(() => {
         <a
             v-if="external"
             :href="href"
+            v-bind="{ ...a11yAttrs, ...attrs }"
             :class="[classes, attrs.class]"
-            :title="title"
-            :aria-label="ariaLabel"
-            v-bind="{ ...a11yAttrs, ...rest }"
         >
             <slot>{{ label }}</slot>
         </a>
         <Link
             v-else
             :href="href"
+            v-bind="{ ...a11yAttrs, ...attrs }"
             :class="[classes, attrs.class]"
-            :title="title"
-            :aria-label="ariaLabel"
-            v-bind="{ ...a11yAttrs, ...rest }"
         >
             <slot>{{ label }}</slot>
         </Link>

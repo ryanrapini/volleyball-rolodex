@@ -12,7 +12,7 @@ import Menu from 'primevue/menu';
 import Toast from 'primevue/toast';
 import Toolbar from 'primevue/toolbar';
 import { useToast } from 'primevue/usetoast';
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 const page = usePage();
 
@@ -72,23 +72,30 @@ const toast = useToast();
  */
 let lastShown = null;
 
-watch(
-    () => page.props.flash,
-    (flash) => {
-        const message = flash?.status ?? flash?.error ?? null;
+const showFlash = (flash) => {
+    const message = flash?.status ?? flash?.error ?? null;
 
-        if (message && message !== lastShown) {
-            toast.add({
-                severity: flash?.status ? 'success' : 'error',
-                summary: message,
-                life: 4000,
-            });
-        }
+    if (message && message !== lastShown) {
+        toast.add({
+            severity: flash?.status ? 'success' : 'error',
+            summary: message,
+            life: 4000,
+        });
+    }
 
-        lastShown = message;
-    },
-    { immediate: true, deep: true },
-);
+    lastShown = message;
+};
+
+/*
+ * PrimeVue's ToastService hands messages over a global event bus and every Toast
+ * component keeps its own list, so anything added before it mounts is dropped on
+ * the floor. This layout is rebuilt on each Inertia visit, which is exactly when
+ * a flash arrives, so the first message has to wait until mounted — children
+ * mount before their parent's onMounted runs.
+ */
+onMounted(() => showFlash(page.props.flash));
+
+watch(() => page.props.flash, showFlash, { deep: true });
 </script>
 
 <template>
