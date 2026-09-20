@@ -1,7 +1,6 @@
 <script setup>
+import Checkbox from 'primevue/checkbox';
 import { computed } from 'vue';
-
-const emit = defineEmits(['update:checked']);
 
 const props = defineProps({
     checked: {
@@ -13,22 +12,17 @@ const props = defineProps({
     },
 });
 
-const proxyChecked = computed({
-    get() {
-        return props.checked;
-    },
+const emit = defineEmits(['update:checked']);
 
-    set(val) {
-        emit('update:checked', val);
-    },
-});
+// A lone checkbox (remember me) is binary; grouped checkboxes carry a value.
+const binary = computed(() => props.value === null);
 </script>
 
 <template>
-    <input
-        type="checkbox"
+    <Checkbox
+        :modelValue="checked"
         :value="value"
-        v-model="proxyChecked"
-        class="border-2 border-ink bg-white text-riso-pink focus:ring-0 focus:ring-offset-0"
+        :binary="binary"
+        @update:modelValue="emit('update:checked', $event)"
     />
 </template>

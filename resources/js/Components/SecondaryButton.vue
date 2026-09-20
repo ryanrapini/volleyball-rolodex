@@ -1,4 +1,6 @@
 <script setup>
+import Button from 'primevue/button';
+
 defineProps({
     type: {
         type: String,
@@ -8,7 +10,7 @@ defineProps({
 </script>
 
 <template>
-    <button :type="type" class="btn btn-secondary">
+    <Button :type="type" severity="secondary" outlined>
         <slot />
-    </button>
+    </Button>
 </template>

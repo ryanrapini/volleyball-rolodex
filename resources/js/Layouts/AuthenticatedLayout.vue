@@ -1,206 +1,182 @@
 <script setup>
-import { ref } from 'vue';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import AssistantDrawer from '@/Components/AssistantDrawer.vue';
-import Dropdown from '@/Components/Dropdown.vue';
-import DropdownLink from '@/Components/DropdownLink.vue';
-import NavLink from '@/Components/NavLink.vue';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
 import { open as assistantOpen } from '@/assistant';
-import { Link, usePage } from '@inertiajs/vue3';
-
-const showingNavigationDropdown = ref(false);
+import { Link, router, usePage } from '@inertiajs/vue3';
+import Avatar from 'primevue/avatar';
+import Button from 'primevue/button';
+import Divider from 'primevue/divider';
+import Drawer from 'primevue/drawer';
+import Menu from 'primevue/menu';
+import Message from 'primevue/message';
+import Toolbar from 'primevue/toolbar';
+import { computed, ref } from 'vue';
 
 const page = usePage();
+
+const mobileNav = ref(false);
+const userMenu = ref(null);
+
+const user = computed(() => page.props.auth.user);
+
+const initials = computed(() =>
+    (user.value?.name ?? '?')
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0].toUpperCase())
+        .join(''),
+);
+
+const navItems = [
+    { label: 'People', icon: 'pi pi-users', route: 'people.index', active: 'people.*' },
+    { label: 'Categories', icon: 'pi pi-tags', route: 'categories.index', active: 'categories.*' },
+];
+
+const userMenuItems = computed(() => [
+    { label: user.value?.name ?? '', disabled: true },
+    { separator: true },
+    {
+        label: 'Profile',
+        icon: 'pi pi-user',
+        command: () => router.visit(route('profile.edit')),
+    },
+    {
+        label: 'Log out',
+        icon: 'pi pi-sign-out',
+        command: () => router.post(route('logout')),
+    },
+]);
+
+const go = (routeName) => {
+    mobileNav.value = false;
+    router.visit(route(routeName));
+};
 </script>
 
 <template>
-    <div class="min-h-screen bg-paper">
-        <nav class="border-b-2 border-ink bg-paper">
-            <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-                <div class="flex h-16 justify-between">
-                    <div class="flex items-center gap-8">
-                        <ApplicationLogo :href="route('people.index')" />
+    <div class="flex min-h-screen flex-col bg-gray-50">
+        <Toolbar class="border-b border-gray-200">
+            <template #start>
+                <ApplicationLogo :href="route('people.index')" />
 
-                        <div class="hidden items-center gap-6 sm:flex">
-                            <NavLink
-                                :href="route('people.index')"
-                                :active="route().current('people.*')"
-                            >
-                                People
-                            </NavLink>
+                <nav class="ml-8 hidden items-center gap-1 md:flex">
+                    <Button
+                        v-for="item in navItems"
+                        :key="item.label"
+                        asChild
+                        :text="!route().current(item.active)"
+                        size="small"
+                    >
+                        <Link :href="route(item.route)">
+                            <i :class="item.icon" class="mr-2" />
+                            {{ item.label }}
+                        </Link>
+                    </Button>
+                </nav>
+            </template>
 
-                            <NavLink
-                                :href="route('categories.index')"
-                                :active="route().current('categories.*')"
-                            >
-                                Categories
-                            </NavLink>
-                        </div>
-                    </div>
-
-                    <div class="hidden sm:ms-6 sm:flex sm:items-center">
-                        <button
-                            type="button"
-                            class="btn btn-secondary px-3 py-1.5 text-xs"
+            <template #end>
+                <div class="flex items-center gap-2">
+                    <div class="hidden md:block">
+                        <Button
+                            label="Assistant"
+                            icon="pi pi-comments"
+                            size="small"
+                            outlined
                             @click="assistantOpen = true"
-                        >
-                            🎙 Assistant
-                        </button>
-
-                        <div class="relative ms-3">
-                            <Dropdown align="right" width="48">
-                                <template #trigger>
-                                    <button
-                                        type="button"
-                                        class="inline-flex items-center border-2 border-ink bg-white px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-widest text-ink shadow-print-sm transition-all duration-100 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none"
-                                    >
-                                        {{ page.props.auth.user.name }}
-                                        <svg
-                                            class="ms-2 h-3 w-3"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            viewBox="0 0 20 20"
-                                            fill="currentColor"
-                                        >
-                                            <path
-                                                fill-rule="evenodd"
-                                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                                clip-rule="evenodd"
-                                            />
-                                        </svg>
-                                    </button>
-                                </template>
-
-                                <template #content>
-                                    <DropdownLink :href="route('profile.edit')">
-                                        Profile
-                                    </DropdownLink>
-                                    <DropdownLink
-                                        :href="route('logout')"
-                                        method="post"
-                                        as="button"
-                                    >
-                                        Log Out
-                                    </DropdownLink>
-                                </template>
-                            </Dropdown>
-                        </div>
+                        />
                     </div>
 
-                    <!-- Hamburger -->
-                    <div class="-me-2 flex items-center sm:hidden">
-                        <button
-                            @click="showingNavigationDropdown = !showingNavigationDropdown"
-                            class="inline-flex items-center justify-center border-2 border-ink bg-white p-2 text-ink"
-                            aria-label="Toggle navigation"
-                        >
-                            <svg
-                                class="h-5 w-5"
-                                stroke="currentColor"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    :class="{
-                                        hidden: showingNavigationDropdown,
-                                        'inline-flex': !showingNavigationDropdown,
-                                    }"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M4 6h16M4 12h16M4 18h16"
-                                />
-                                <path
-                                    :class="{
-                                        hidden: !showingNavigationDropdown,
-                                        'inline-flex': showingNavigationDropdown,
-                                    }"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M6 18L18 6M6 6l12 12"
-                                />
-                            </svg>
-                        </button>
+                    <div class="md:hidden">
+                        <Button
+                            text
+                            severity="secondary"
+                            icon="pi pi-bars"
+                            aria-label="Open menu"
+                            @click="mobileNav = true"
+                        />
+                    </div>
+
+                    <div class="hidden md:block">
+                        <Button text severity="secondary" @click="userMenu.toggle($event)">
+                            <Avatar :label="initials" shape="circle" size="small" />
+                            <span class="ml-2">{{ user.name }}</span>
+                            <i class="pi pi-angle-down ml-2 text-xs" />
+                        </Button>
+                        <Menu ref="userMenu" :model="userMenuItems" popup />
                     </div>
                 </div>
-            </div>
+            </template>
+        </Toolbar>
 
-            <!-- Responsive Navigation Menu -->
-            <div
-                :class="{
-                    block: showingNavigationDropdown,
-                    hidden: !showingNavigationDropdown,
-                }"
-                class="border-t-2 border-ink sm:hidden"
-            >
-                <div class="space-y-1 pb-3 pt-2">
-                    <ResponsiveNavLink
-                        :href="route('people.index')"
-                        :active="route().current('people.*')"
-                    >
-                        People
-                    </ResponsiveNavLink>
-
-                    <ResponsiveNavLink
-                        :href="route('categories.index')"
-                        :active="route().current('categories.*')"
-                    >
-                        Categories
-                    </ResponsiveNavLink>
-                </div>
-
-                <div class="border-t-2 border-ink pb-1 pt-4">
-                    <div class="px-4">
-                        <div class="text-base font-bold text-ink">
-                            {{ page.props.auth.user.name }}
-                        </div>
-                        <div class="font-mono text-xs text-ink/60">
-                            {{ page.props.auth.user.email }}
-                        </div>
-                    </div>
-
-                    <div class="mt-3 space-y-1">
-                        <button
-                            type="button"
-                            class="block w-full border-s-4 border-transparent py-2 ps-3 text-start font-mono text-xs font-semibold uppercase tracking-widest text-ink/60 hover:border-riso-blue/40 hover:bg-paper hover:text-ink"
-                            @click="
-                                assistantOpen = true;
-                                showingNavigationDropdown = false;
-                            "
-                        >
-                            Assistant
-                        </button>
-
-                        <ResponsiveNavLink :href="route('profile.edit')">
-                            Profile
-                        </ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('logout')" method="post" as="button">
-                            Log Out
-                        </ResponsiveNavLink>
-                    </div>
-                </div>
-            </div>
-        </nav>
-
-        <!-- Flash message -->
-        <div v-if="$page.props.flash?.status" class="border-b-2 border-ink bg-riso-pink/25">
-            <div class="mx-auto max-w-5xl px-4 py-2 font-mono text-xs font-semibold text-ink sm:px-6 lg:px-8">
+        <div v-if="$page.props.flash?.status" class="mx-auto w-full max-w-6xl px-4 pt-4 sm:px-6 lg:px-8">
+            <Message severity="success" :closable="false">
                 {{ $page.props.flash.status }}
-            </div>
+            </Message>
         </div>
 
-        <!-- Page Heading -->
-        <header v-if="$slots.header" class="border-b-2 border-ink bg-white">
-            <div class="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
+        <header v-if="$slots.header" class="bg-white">
+            <div class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
                 <slot name="header" />
             </div>
         </header>
 
-        <!-- Page Content -->
-        <main>
+        <main class="flex-1">
             <slot />
         </main>
+
+        <Drawer v-model:visible="mobileNav" header="Menu" position="left" class="w-72">
+            <div class="flex flex-col gap-1">
+                <Button
+                    v-for="item in navItems"
+                    :key="item.label"
+                    :label="item.label"
+                    :icon="item.icon"
+                    :text="!route().current(item.active)"
+                    severity="secondary"
+                    class="justify-start"
+                    @click="go(item.route)"
+                />
+                <Button
+                    label="Assistant"
+                    icon="pi pi-comments"
+                    text
+                    severity="secondary"
+                    class="justify-start"
+                    @click="
+                        mobileNav = false;
+                        assistantOpen = true;
+                    "
+                />
+            </div>
+
+            <Divider />
+
+            <div class="px-2">
+                <p class="text-sm font-medium text-gray-900">{{ user.name }}</p>
+                <p class="text-xs text-gray-500">{{ user.email }}</p>
+            </div>
+
+            <div class="mt-3 flex flex-col gap-1">
+                <Button
+                    label="Profile"
+                    icon="pi pi-user"
+                    text
+                    severity="secondary"
+                    class="justify-start"
+                    @click="go('profile.edit')"
+                />
+                <Button
+                    label="Log out"
+                    icon="pi pi-sign-out"
+                    text
+                    severity="secondary"
+                    class="justify-start"
+                    @click="router.post(route('logout'))"
+                />
+            </div>
+        </Drawer>
 
         <AssistantDrawer />
     </div>

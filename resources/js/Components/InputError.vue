@@ -1,4 +1,6 @@
 <script setup>
+import Message from 'primevue/message';
+
 defineProps({
     message: {
         type: String,
@@ -7,9 +9,7 @@ defineProps({
 </script>
 
 <template>
-    <div v-show="message">
-        <p class="mt-1 inline-block bg-riso-pink px-2 py-1 font-mono text-xs font-semibold text-ink">
-            {{ message }}
-        </p>
-    </div>
+    <Message v-if="message" severity="error" size="small" variant="simple">
+        {{ message }}
+    </Message>
 </template>

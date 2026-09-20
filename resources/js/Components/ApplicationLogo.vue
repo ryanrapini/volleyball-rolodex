@@ -1,4 +1,5 @@
 <script setup>
+import Avatar from 'primevue/avatar';
 import { Link } from '@inertiajs/vue3';
 
 defineProps({
@@ -10,15 +11,8 @@ defineProps({
 </script>
 
 <template>
-    <Link :href="href" class="inline-flex items-center gap-2">
-        <span
-            class="flex h-9 w-9 items-center justify-center border-2 border-ink bg-riso-pink text-lg leading-none shadow-print-sm"
-            aria-hidden="true"
-        >
-            🏐
-        </span>
-        <span class="font-sans text-lg font-bold uppercase tracking-tight text-ink">
-            Rolodex
-        </span>
+    <Link :href="href" class="flex items-center gap-2">
+        <Avatar icon="pi pi-users" shape="square" />
+        <span class="text-lg font-semibold text-gray-900">Rolodex</span>
     </Link>
 </template>
