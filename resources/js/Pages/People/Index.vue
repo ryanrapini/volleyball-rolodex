@@ -85,17 +85,6 @@ const toggleSelected = (id) => {
     }
 };
 
-const onCardClick = (event, person) => {
-    if (!selecting.value) {
-        return;
-    }
-
-    // Inertia ignores a click whose default was prevented, so this turns the
-    // card into a toggle without navigating away.
-    event.preventDefault();
-    toggleSelected(person.id);
-};
-
 const clearSelection = () => {
     picked.value = [];
 };
@@ -306,7 +295,6 @@ const clearSearch = () => {
                         :href="route('people.show', person.id)"
                         class="card flex h-full gap-3 p-4 pb-12 transition-transform duration-100 hover:-translate-y-0.5 hover:shadow-print-sm"
                         :class="inSelection(person.id) ? 'bg-riso-pink/25 shadow-print-sm' : ''"
-                        @click="onCardClick($event, person)"
                     >
                         <img
                             v-if="person.photo_url"
@@ -355,9 +343,20 @@ const clearSearch = () => {
                         </span>
                     </Link>
 
+                    <!-- While selecting, this sits over the whole card so a click
+                         toggles the person instead of following the link. -->
+                    <button
+                        v-if="selecting"
+                        type="button"
+                        class="absolute inset-0 z-10 cursor-pointer border-2 border-transparent"
+                        :aria-pressed="inSelection(person.id)"
+                        :aria-label="`${inSelection(person.id) ? 'Deselect' : 'Select'} ${person.name}`"
+                        @click="toggleSelected(person.id)"
+                    ></button>
+
                     <span
                         v-if="selecting"
-                        class="absolute right-2 top-2 flex h-6 w-6 items-center justify-center border-2 border-ink font-mono text-xs font-bold"
+                        class="absolute right-2 top-2 z-20 flex h-6 w-6 items-center justify-center border-2 border-ink font-mono text-xs font-bold"
                         :class="inSelection(person.id) ? 'bg-riso-pink text-ink' : 'bg-white text-transparent'"
                         aria-hidden="true"
                     >
