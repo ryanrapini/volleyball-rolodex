@@ -1,8 +1,8 @@
 <script setup>
+import ButtonLink from '@/Components/ButtonLink.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Link } from '@inertiajs/vue3';
 import Button from 'primevue/button';
 import RadioButton from 'primevue/radiobutton';
 import { computed, watch } from 'vue';
@@ -148,9 +148,7 @@ const removeOption = (index) => props.form.options.splice(index, 1);
         <div class="flex flex-wrap items-center gap-3 border-t border-gray-200 pt-5">
             <Button type="submit" :label="submitLabel" :disabled="form.processing" />
 
-            <Button asChild severity="secondary" outlined>
-                <Link :href="cancelHref">Cancel</Link>
-            </Button>
+            <ButtonLink :href="cancelHref" severity="secondary" outlined label="Cancel" />
         </div>
     </form>
 </template>

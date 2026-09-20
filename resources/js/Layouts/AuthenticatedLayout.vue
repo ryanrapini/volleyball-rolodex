@@ -1,8 +1,9 @@
 <script setup>
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import AssistantDrawer from '@/Components/AssistantDrawer.vue';
+import ButtonLink from '@/Components/ButtonLink.vue';
 import { open as assistantOpen } from '@/assistant';
-import { Link, router, usePage } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
 import Avatar from 'primevue/avatar';
 import Button from 'primevue/button';
 import Divider from 'primevue/divider';
@@ -61,18 +62,16 @@ const go = (routeName) => {
                 <ApplicationLogo :href="route('people.index')" />
 
                 <nav class="ml-8 hidden items-center gap-1 md:flex">
-                    <Button
+                    <ButtonLink
                         v-for="item in navItems"
                         :key="item.label"
-                        asChild
+                        :href="route(item.route)"
                         :text="!route().current(item.active)"
                         size="small"
                     >
-                        <Link :href="route(item.route)">
-                            <i :class="item.icon" class="mr-2" />
-                            {{ item.label }}
-                        </Link>
-                    </Button>
+                        <i :class="item.icon" class="mr-2" />
+                        {{ item.label }}
+                    </ButtonLink>
                 </nav>
             </template>
 

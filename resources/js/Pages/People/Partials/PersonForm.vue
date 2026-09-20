@@ -1,10 +1,10 @@
 <script setup>
+import ButtonLink from '@/Components/ButtonLink.vue';
 import CategoryAnswersFieldset from '@/Components/CategoryAnswersFieldset.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Link } from '@inertiajs/vue3';
 import Avatar from 'primevue/avatar';
 import Button from 'primevue/button';
 import FileUpload from 'primevue/fileupload';
@@ -198,9 +198,7 @@ const clearPhoto = () => {
                 label="Cancel"
                 @click="$emit('cancel')"
             />
-            <Button v-else asChild severity="secondary" outlined>
-                <Link :href="cancelHref">Cancel</Link>
-            </Button>
+            <ButtonLink v-else :href="cancelHref" severity="secondary" outlined label="Cancel" />
         </div>
     </form>
 </template>

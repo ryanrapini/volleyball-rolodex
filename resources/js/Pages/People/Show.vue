@@ -1,4 +1,5 @@
 <script setup>
+import ButtonLink from '@/Components/ButtonLink.vue';
 import DangerButton from '@/Components/DangerButton.vue';
 import Modal from '@/Components/Modal.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
@@ -64,12 +65,10 @@ const deletePerson = () => {
                     </h1>
                 </div>
 
-                <Button asChild>
-                    <Link :href="route('people.edit', person.id)">
-                        <i class="pi pi-pencil mr-2" />
-                        Edit
-                    </Link>
-                </Button>
+                <ButtonLink :href="route('people.edit', person.id)">
+                    <i class="pi pi-pencil mr-2" />
+                    Edit
+                </ButtonLink>
             </div>
         </template>
 

@@ -1,7 +1,8 @@
 <script setup>
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import ButtonLink from '@/Components/ButtonLink.vue';
 import Modal from '@/Components/Modal.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { Head, useForm } from '@inertiajs/vue3';
 import Button from 'primevue/button';
 import Card from 'primevue/card';
 import Tag from 'primevue/tag';
@@ -47,9 +48,7 @@ const deleteCategory = () => {
                     </p>
                 </div>
 
-                <Button asChild>
-                    <Link :href="route('categories.create')">New category</Link>
-                </Button>
+                <ButtonLink :href="route('categories.create')">New category</ButtonLink>
             </div>
         </template>
 
@@ -63,11 +62,9 @@ const deleteCategory = () => {
                             plays beach.
                         </p>
                         <div class="mt-5">
-                            <Button asChild>
-                                <Link :href="route('categories.create')">
-                                    Add your first category
-                                </Link>
-                            </Button>
+                            <ButtonLink :href="route('categories.create')">
+                                Add your first category
+                            </ButtonLink>
                         </div>
                     </div>
                 </template>
@@ -88,11 +85,14 @@ const deleteCategory = () => {
                                 </div>
 
                                 <div class="flex shrink-0 gap-2">
-                                    <Button asChild severity="secondary" outlined size="small">
-                                        <Link :href="route('categories.edit', category.id)">
-                                            Edit
-                                        </Link>
-                                    </Button>
+                                    <ButtonLink
+                                        :href="route('categories.edit', category.id)"
+                                        severity="secondary"
+                                        outlined
+                                        size="small"
+                                    >
+                                        Edit
+                                    </ButtonLink>
 
                                     <Button
                                         severity="danger"

@@ -1,5 +1,6 @@
 <script setup>
 import BulkAnswersModal from '@/Components/BulkAnswersModal.vue';
+import ButtonLink from '@/Components/ButtonLink.vue';
 import QuickEditPersonModal from '@/Components/QuickEditPersonModal.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
@@ -169,12 +170,10 @@ const clearSearch = () => {
                     </p>
                 </div>
 
-                <Button asChild>
-                    <Link :href="route('people.create')">
-                        <i class="pi pi-plus mr-2" />
-                        Add person
-                    </Link>
-                </Button>
+                <ButtonLink :href="route('people.create')">
+                    <i class="pi pi-plus mr-2" />
+                    Add person
+                </ButtonLink>
             </div>
         </template>
 
@@ -280,11 +279,9 @@ const clearSearch = () => {
                             <p class="mt-2 text-sm text-gray-600">
                                 Add the people you can call when you need a seventh.
                             </p>
-                            <Button asChild class="mt-5">
-                                <Link :href="route('people.create')">
-                                    Add your first person
-                                </Link>
-                            </Button>
+                            <ButtonLink :href="route('people.create')" class="mt-5">
+                                Add your first person
+                            </ButtonLink>
                         </template>
                     </div>
                 </template>
