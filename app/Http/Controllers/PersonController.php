@@ -126,10 +126,17 @@ class PersonController extends Controller
         $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], mb_strtolower($term));
         $needle = '%'.$escaped.'%';
 
-        foreach (['name', 'phone', 'email', 'notes'] as $index => $column) {
-            $method = $index === 0 ? 'whereRaw' : 'orWhereRaw';
+        $query->whereRaw("lower(name) like ? escape '\\'", [$needle]);
 
-            $query->{$method}("lower(".$column.") like ? escape '\\'", [$needle]);
+        foreach (['phone', 'email', 'notes'] as $column) {
+            $query->orWhereRaw("lower(".$column.") like ? escape '\\'", [$needle]);
+        }
+
+        // Dialling digits should find a number however it was punctuated.
+        $digits = preg_replace('/\D+/', '', $term);
+
+        if (is_string($digits) && $digits !== '') {
+            $query->orWhereRaw('phone_digits like ?', ['%'.$digits.'%']);
         }
     }
 }

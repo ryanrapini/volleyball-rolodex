@@ -13,6 +13,9 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('name', 120);
             $table->string('phone', 40)->nullable();
+            // Digits-only copy of the phone number so a search for "5551234567"
+            // finds "(555) 123-4567".
+            $table->string('phone_digits', 20)->nullable();
             $table->string('email')->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();

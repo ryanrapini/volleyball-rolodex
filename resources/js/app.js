@@ -9,7 +9,8 @@ import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 const appName = import.meta.env.VITE_APP_NAME || 'Volleyball Rolodex';
 
 createInertiaApp({
-    title: (title) => (title ? `${title} - ${appName}` : appName),
+    // Pages whose title is already the app name don't need it twice.
+    title: (title) => (title && title !== appName ? `${title} - ${appName}` : appName),
     resolve: (name) =>
         resolvePageComponent(
             `./Pages/${name}.vue`,

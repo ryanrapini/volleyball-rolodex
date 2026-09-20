@@ -167,3 +167,47 @@ test('deleting a user takes their rolodex with them', function () {
 
     $this->assertDatabaseCount('people', 0);
 });
+
+test('search finds a phone number however it is punctuated', function () {
+    $user = User::factory()->create();
+    Person::factory()->for($user)->create([
+        'name' => 'Priya Raman',
+        'phone' => '(555) 999-0000',
+    ]);
+    Person::factory()->for($user)->create([
+        'name' => 'Someone Else',
+        'phone' => '555-111-2222',
+    ]);
+
+    foreach (['555-999', '5559990000', '999 0000'] as $term) {
+        $this->actingAs($user)
+            ->get(route('people.index', ['q' => $term]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('people.total', 1)
+                ->where('people.data.0.name', 'Priya Raman')
+                ->etc());
+    }
+});
+
+test('a saved person keeps their searchable digits in step with the phone number', function () {
+    $user = User::factory()->create();
+    $person = Person::factory()->for($user)->create(['phone' => '(555) 123-4567']);
+
+    expect($person->phone_digits)->toBe('5551234567');
+
+    $person->update(['phone' => '']);
+
+    expect($person->refresh()->phone_digits)->toBeNull();
+});
+
+test('the confirmation message is shared with the page after adding someone', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->followingRedirects()
+        ->post(route('people.store'), ['name' => 'Marcus Hale'])
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('People/Show')
+            ->where('flash.status', 'Added Marcus Hale to your rolodex.')
+            ->etc());
+});
