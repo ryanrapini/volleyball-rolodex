@@ -65,6 +65,15 @@ return [
             'transport' => 'resend',
         ],
 
+        // Laravel 13's MailManager reads domain/secret from this array, not from
+        // the MAILGUN_* env vars directly.
+        'mailgun' => [
+            'transport' => 'mailgun',
+            'domain' => env('MAILGUN_DOMAIN', env('MAIL_DOMAIN')),
+            'secret' => env('MAILGUN_SECRET'),
+            'endpoint' => env('MAILGUN_ENDPOINT', 'api.mailgun.net'),
+        ],
+
         'sendmail' => [
             'transport' => 'sendmail',
             'path' => env('MAIL_SENDMAIL_PATH', '/usr/sbin/sendmail -bs -i'),
