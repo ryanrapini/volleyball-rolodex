@@ -27,6 +27,13 @@ const page = usePage();
                             >
                                 People
                             </NavLink>
+
+                            <NavLink
+                                :href="route('categories.index')"
+                                :active="route().current('categories.*')"
+                            >
+                                Categories
+                            </NavLink>
                         </div>
                     </div>
 
@@ -123,6 +130,13 @@ const page = usePage();
                         :active="route().current('people.*')"
                     >
                         People
+                    </ResponsiveNavLink>
+
+                    <ResponsiveNavLink
+                        :href="route('categories.index')"
+                        :active="route().current('categories.*')"
+                    >
+                        Categories
                     </ResponsiveNavLink>
                 </div>
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\PersonController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
@@ -20,6 +21,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', fn () => redirect()->route('people.index'))->name('dashboard');
 
     Route::resource('people', PersonController::class);
+    Route::resource('categories', CategoryController::class)->except('show');
 });
 
 Route::middleware('auth')->group(function () {

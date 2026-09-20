@@ -29,6 +29,16 @@ class User extends Authenticatable
     }
 
     /**
+     * The categories this user classifies people with.
+     *
+     * @return HasMany<Category, $this>
+     */
+    public function categories(): HasMany
+    {
+        return $this->hasMany(Category::class);
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
