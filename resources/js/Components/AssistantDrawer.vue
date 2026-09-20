@@ -55,7 +55,8 @@ const send = async () => {
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-            error.value = data.error ?? 'Something went wrong.';
+            // Laravel middleware replies with {message}; our own handlers use {error}.
+            error.value = data.error ?? data.message ?? 'Something went wrong.';
             messages.value.pop();
             draft.value = text;
 
@@ -149,7 +150,7 @@ const transcribe = async (blob) => {
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-            micProblem.value = data.error ?? 'Could not make that out.';
+            micProblem.value = data.error ?? data.message ?? 'Could not make that out.';
 
             return;
         }
