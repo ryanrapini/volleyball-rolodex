@@ -29,6 +29,12 @@ const problem = ref('');
 const categories = ref([]);
 const currentPhotoUrl = ref(null);
 
+const xsrfToken = () => {
+    const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
+
+    return match ? decodeURIComponent(match[1]) : '';
+};
+
 const form = useForm({
     name: '',
     phone: '',
@@ -49,7 +55,7 @@ const heading = computed(() => {
     return isTags.value ? `Categories for ${form.name}` : `Edit ${form.name}`;
 });
 
-const submitLabel = computed(() => (isTags.value ? 'Save categories' : 'Save changes'));
+const submitLabel = computed(() => (isTags.value ? 'Save categories' : 'Save details'));
 
 // Load on open, so the popup always starts from what is actually stored. The
 // list card only carries an excerpt of the notes.
@@ -110,50 +116,86 @@ watch(
     { immediate: true },
 );
 
-const submit = () => {
-    /*
-     * Answers go out as a list, so an entry always carries its category id even
-     * when every field inside it is empty. An unset value is simply absent.
-     */
-    const answers = Object.entries(form.answers).map(([categoryId, answer]) => {
-        const entry = { category_id: categoryId };
-
-        if (answer.value !== null && answer.value !== undefined) {
-            entry.value = answer.value;
-        }
-
-        if (answer.option_id) {
-            entry.option_id = answer.option_id;
-        }
-
-        if (answer.option_ids?.length) {
-            entry.option_ids = [...answer.option_ids];
-        }
-
-        return entry;
-    });
+/*
+ * This endpoint answers with plain JSON rather than an Inertia response, so the
+ * save goes out as a raw fetch. Handing it to Inertia means the request lands
+ * and the row changes, but the client never hears about it: no success, no
+ * close, no refresh.
+ */
+const submit = async () => {
+    const body = new FormData();
 
     // The name is always sent: the endpoint requires it, and sending it
     // unchanged keeps this a no-op for the fields this popup does not show.
-    const payload = isTags.value
-        ? { name: form.name ?? '', answers }
-        : {
-              name: form.name ?? '',
-              phone: form.phone ?? '',
-              email: form.email ?? '',
-              notes: form.notes ?? '',
-              remove_photo: !!form.remove_photo,
-              photo: form.photo,
-              answers,
-          };
+    body.append('name', form.name ?? '');
 
-    form.transform(() => payload).post(route('people.quick-update', props.personId), {
-        preserveScroll: true,
-        onSuccess: () => emit('saved'),
-        onError: () => {
-            problem.value = 'Some of that needs fixing.';
-        },
+    if (!isTags.value) {
+        body.append('phone', form.phone ?? '');
+        body.append('email', form.email ?? '');
+        body.append('notes', form.notes ?? '');
+        body.append('remove_photo', form.remove_photo ? '1' : '0');
+
+        if (form.photo) {
+            body.append('photo', form.photo);
+        }
+    }
+
+    // Answers go out as a list, so an entry always carries its category id even
+    // when every field inside it is empty. An unset value is simply absent.
+    let index = 0;
+
+    Object.entries(form.answers).forEach(([categoryId, answer]) => {
+        body.append(`answers[${index}][category_id]`, categoryId);
+
+        if (answer.value !== null && answer.value !== undefined) {
+            body.append(`answers[${index}][value]`, answer.value ? '1' : '0');
+        }
+
+        if (answer.option_id) {
+            body.append(`answers[${index}][option_id]`, answer.option_id);
+        }
+
+        (answer.option_ids ?? []).forEach((optionId, position) => {
+            body.append(`answers[${index}][option_ids][${position}]`, optionId);
+        });
+
+        index += 1;
     });
+
+    form.processing = true;
+    form.clearErrors();
+    problem.value = '';
+
+    try {
+        const response = await fetch(route('people.quick-update', props.personId), {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json', 'X-XSRF-TOKEN': xsrfToken() },
+            body,
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (response.status === 422) {
+            form.setError(data.errors ?? {});
+            problem.value = 'Some of that needs fixing.';
+
+            return;
+        }
+
+        if (!response.ok) {
+            problem.value = data.message ?? data.error ?? 'Could not save.';
+
+            return;
+        }
+
+        emit('saved', data);
+        emit('close');
+    } catch {
+        problem.value = 'Could not save.';
+    } finally {
+        form.processing = false;
+    }
 };
 </script>
 

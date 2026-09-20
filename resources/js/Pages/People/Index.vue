@@ -452,8 +452,7 @@ const clearSearch = () => {
                 v-if="people.total > people.per_page"
                 :first="(people.current_page - 1) * people.per_page"
                 :rows="people.per_page"
-                :total="people.total"
-                :rowsPerPageOptions="[people.per_page]"
+                :totalRecords="people.total"
                 class="mt-8"
                 @page="visit($event.page + 1)"
             />
