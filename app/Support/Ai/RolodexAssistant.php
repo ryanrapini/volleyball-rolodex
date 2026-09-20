@@ -119,6 +119,11 @@ class RolodexAssistant
 
         Rules:
         - Use the tools. Never claim to have saved someone without a tool result saying so.
+        - Always check for duplicates before adding someone: call find_people with the name
+          first, and treat what it returns as the owner's existing people. If create_person
+          comes back with possible_duplicates, do not argue with it — ask the owner whether
+          to update one of those people or whether this is genuinely a different person, and
+          only retry with confirm_new=true once they have confirmed it is different.
         - A name is the only thing required. Add whatever else the owner said and leave the
           rest unset rather than inventing details.
         - Only use the category names and choices listed above, verbatim. If the owner
@@ -160,7 +165,7 @@ class RolodexAssistant
                 'type' => 'function',
                 'function' => [
                     'name' => 'find_people',
-                    'description' => 'Look someone up in the rolodex before adding or editing them.',
+                    'description' => 'Check for duplicates: look someone up in the rolodex before adding or editing them. Always call this before create_person.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -174,7 +179,7 @@ class RolodexAssistant
                 'type' => 'function',
                 'function' => [
                     'name' => 'create_person',
-                    'description' => 'Add a new person to the rolodex.',
+                    'description' => 'Add a new person to the rolodex. Refuses and returns possible_duplicates if the name looks like someone already stored; only retry with confirm_new=true after the owner confirms it is a different person.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -182,6 +187,10 @@ class RolodexAssistant
                             'phone' => ['type' => 'string'],
                             'email' => ['type' => 'string'],
                             'notes' => ['type' => 'string', 'description' => 'Anything else worth remembering.'],
+                            'confirm_new' => [
+                                'type' => 'boolean',
+                                'description' => 'Set true only when the owner has confirmed this is a different person from the possible_duplicates that were returned.',
+                            ],
                             'answers' => $answerSchema,
                         ],
                         'required' => ['name'],
@@ -266,8 +275,20 @@ class RolodexAssistant
             return ['error' => 'A name is required.'];
         }
 
-        if ($this->user->people()->whereRaw('lower(name) = ?', [mb_strtolower($name)])->exists()) {
-            return ['error' => $name.' is already in the rolodex. Use update_person instead.'];
+        if (! ($input['confirm_new'] ?? false)) {
+            $duplicates = $this->duplicateCandidates($name);
+
+            if ($duplicates->isNotEmpty()) {
+                return [
+                    'error' => $name.' looks like someone already in the rolodex. Ask the owner whether to update one of these people, or whether this really is a different person.',
+                    'possible_duplicates' => $duplicates->map(fn (Person $person): array => [
+                        'name' => $person->name,
+                        'phone' => $person->phone,
+                        'tags' => $person->categoryTags(6),
+                    ])->all(),
+                    'retry' => 'Only call create_person again with confirm_new=true once the owner has said it is a different person.',
+                ];
+            }
         }
 
         $attributes = $this->contactAttributes($input);
@@ -285,6 +306,77 @@ class RolodexAssistant
             'recorded' => $this->summariseAnswers($answers, $categories),
             'warnings' => $warnings,
         ];
+    }
+
+    /**
+     * People whose name looks like the one about to be added.
+     *
+     * A personal rolodex is small, so comparing every name is both simpler and
+     * more reliable than a SQL prefilter — a prefilter on the first word would
+     * let a typo in that word slip straight past the check.
+     *
+     * @return Collection<int, Person>
+     */
+    private function duplicateCandidates(string $name): Collection
+    {
+        $needle = $this->normaliseName($name);
+
+        if ($needle === '') {
+            return collect();
+        }
+
+        return $this->user->people()
+            ->with(['categoryValues.category', 'categoryValues.option'])
+            ->get()
+            ->filter(function (Person $person) use ($needle): bool {
+                $candidate = $this->normaliseName($person->name);
+
+                if ($candidate === '') {
+                    return false;
+                }
+
+                // Same name, however it was punctuated or capitalised.
+                if ($candidate === $needle) {
+                    return true;
+                }
+
+                // The same words in a different order.
+                if ($this->wordSet($candidate) === $this->wordSet($needle)) {
+                    return true;
+                }
+
+                $shortest = min(mb_strlen($candidate), mb_strlen($needle));
+
+                // One name contains the other: "Marcus" against "Marcus Hale".
+                if ($shortest >= 3 && (str_contains($candidate, $needle) || str_contains($needle, $candidate))) {
+                    return true;
+                }
+
+                // A typo: short names get one character of slack, longer ones two,
+                // which is what catches a transposition ("Marcsu" for "Marcus").
+                return $shortest >= 5 && levenshtein($candidate, $needle) <= ($shortest <= 8 ? 1 : 2);
+            })
+            ->take(5)
+            ->values();
+    }
+
+    private function normaliseName(?string $name): string
+    {
+        $letters = preg_replace('/[^\p{L}\p{N} ]+/u', ' ', mb_strtolower((string) $name)) ?? '';
+        $collapsed = preg_replace('/\s+/', ' ', $letters) ?? '';
+
+        return trim($collapsed);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function wordSet(string $normalised): array
+    {
+        $words = array_values(array_unique(explode(' ', $normalised)));
+        sort($words);
+
+        return $words;
     }
 
     /**
