@@ -9,9 +9,10 @@ import Button from 'primevue/button';
 import Divider from 'primevue/divider';
 import Drawer from 'primevue/drawer';
 import Menu from 'primevue/menu';
-import Message from 'primevue/message';
+import Toast from 'primevue/toast';
 import Toolbar from 'primevue/toolbar';
-import { computed, ref } from 'vue';
+import { useToast } from 'primevue/usetoast';
+import { computed, ref, watch } from 'vue';
 
 const page = usePage();
 
@@ -53,6 +54,34 @@ const go = (routeName) => {
     mobileNav.value = false;
     router.visit(route(routeName));
 };
+
+const toast = useToast();
+
+/*
+ * Flash messages arrive as page props, so a history restore can hand the same
+ * one back. Remembering the last message shown stops a toast reappearing when
+ * the user navigates back, while an identical message after a later action
+ * still shows — the page in between clears the flash.
+ */
+let lastShown = null;
+
+watch(
+    () => page.props.flash,
+    (flash) => {
+        const message = flash?.status ?? flash?.error ?? null;
+
+        if (message && message !== lastShown) {
+            toast.add({
+                severity: flash?.status ? 'success' : 'error',
+                summary: message,
+                life: 4000,
+            });
+        }
+
+        lastShown = message;
+    },
+    { immediate: true, deep: true },
+);
 </script>
 
 <template>
@@ -109,11 +138,7 @@ const go = (routeName) => {
             </template>
         </Toolbar>
 
-        <div v-if="$page.props.flash?.status" class="mx-auto w-full max-w-6xl px-4 pt-4 sm:px-6 lg:px-8">
-            <Message severity="success" :closable="false">
-                {{ $page.props.flash.status }}
-            </Message>
-        </div>
+        <Toast position="top-center" />
 
         <header v-if="$slots.header" class="bg-white">
             <div class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
