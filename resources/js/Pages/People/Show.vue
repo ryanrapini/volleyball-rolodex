@@ -78,21 +78,10 @@ const deletePerson = () => {
             <Card>
                 <template #content>
                     <div class="flex flex-wrap gap-4 sm:gap-6">
-                        <Avatar
-                            v-if="person.photo_url"
-                            :image="person.photo_url"
-                            shape="square"
-                            size="xlarge"
-                            :pt="{ image: { style: 'object-fit: cover; width: 100%; height: 100%' } }"
-                        />
-                        <!-- PrimeVue's size classes win over Tailwind utilities,
-                             so the size prop is the only lever here. -->
-                        <Avatar
-                            v-else
-                            :label="initials"
-                            shape="square"
-                            size="xlarge"
-                            class="bg-gray-100 text-2xl text-gray-500"
+                        <PersonPhoto
+                            :src="person.photo_url"
+                            :name="person.name"
+                            size="lg"
                         />
 
                         <div class="min-w-0 flex-1">

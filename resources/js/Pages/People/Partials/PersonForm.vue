@@ -3,6 +3,8 @@ import ButtonLink from '@/Components/ButtonLink.vue';
 import CategoryAnswersFieldset from '@/Components/CategoryAnswersFieldset.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
+import PersonPhoto from '@/Components/PersonPhoto.vue';
+import PhotoCropper from '@/Components/PhotoCropper.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import Avatar from 'primevue/avatar';
@@ -47,6 +49,7 @@ const props = defineProps({
 const emit = defineEmits(['submit', 'cancel']);
 
 const preview = ref(null);
+const cropping = ref(null);
 const photoProblem = ref('');
 const photoNote = ref('');
 const shrinking = ref(false);
@@ -155,11 +158,12 @@ const usePhoto = (file, original) => {
  * PrimeVue quietly drops a file it does not like, which looked exactly like the
  * photo not attaching at all. Every rejection here says why, out loud.
  */
-const onFileSelect = async (event) => {
+const onFileSelect = (event) => {
     const file = event.files?.[0] ?? null;
 
     photoProblem.value = '';
     photoNote.value = '';
+    cropping.value = null;
 
     if (!file) {
         return;
@@ -177,13 +181,27 @@ const onFileSelect = async (event) => {
         return;
     }
 
-    shrinking.value = true;
+    // The square is settled before anything is sent, so the crop is the photo:
+    // nothing is thrown away afterwards.
+    cropping.value = { url: URL.createObjectURL(file), size: file.size };
+};
 
-    try {
-        usePhoto(await shrink(file), file);
-    } finally {
-        shrinking.value = false;
+/*
+ * The cropper hands back a square of its own making, which is what goes to the
+ * server. It stays open, so the framing can be changed again before saving.
+ */
+const onCropped = (file, size) => {
+    usePhoto(file, cropping.value?.size ?? null);
+
+    photoNote.value = `Square crop, ${size}×${size}. Change the framing any time before saving.`;
+};
+
+const closeCropper = () => {
+    if (cropping.value?.url) {
+        URL.revokeObjectURL(cropping.value.url);
     }
+
+    cropping.value = null;
 };
 
 const clearPhoto = () => {
@@ -248,19 +266,20 @@ const addAnyway = () => {
             <div>
                 <InputLabel for="photo" value="Photo" />
 
-                <div class="flex flex-wrap items-center gap-4">
-                    <Avatar
-                        v-if="preview || (currentPhotoUrl && !form.remove_photo)"
-                        :image="preview || currentPhotoUrl"
-                        shape="square"
-                        size="xlarge"
-                    />
-                    <Avatar
-                        v-else
-                        icon="pi pi-user"
-                        shape="square"
-                        size="xlarge"
-                        class="bg-gray-100 text-gray-400"
+                <PhotoCropper
+                    v-if="cropping"
+                    :src="cropping.url"
+                    @ready="onCropped"
+                    @cancel="closeCropper"
+                />
+
+                <div v-else class="flex flex-wrap items-center gap-4">
+                    <PersonPhoto
+                        :src="
+                            preview || (currentPhotoUrl && !form.remove_photo ? currentPhotoUrl : null)
+                        "
+                        :name="form.name"
+                        size="lg"
                     />
 
                     <div class="flex flex-col items-start gap-2">
@@ -284,10 +303,9 @@ const addAnyway = () => {
                     </div>
                 </div>
 
-                <p v-if="shrinking" class="mt-1 text-xs text-gray-500">Resizing…</p>
-                <p v-else-if="photoNote" class="mt-1 text-xs text-gray-500">{{ photoNote }}</p>
+                <p v-if="photoNote" class="mt-1 text-xs text-gray-500">{{ photoNote }}</p>
                 <p v-else class="mt-1 text-xs text-gray-500">
-                    JPG, PNG or WebP. Big photos are resized before they are sent.
+                    JPG, PNG or WebP, up to 25 MB. After picking one you choose the square.
                 </p>
 
                 <Message v-if="photoProblem" severity="error" size="small" variant="simple" class="mt-2">
@@ -374,11 +392,7 @@ const addAnyway = () => {
                 {{ errorSummary }}
             </Message>
 
-            <div class="flex flex-wrap items-center gap-3">
-                <PrimaryButton :disabled="form.processing">
-                    {{ form.processing ? 'Saving…' : submitLabel }}
-                </PrimaryButton>
-
+            <div class="flex flex-wrap items-center justify-end gap-3">
                 <Button
                     v-if="!cancelHref"
                     type="button"
@@ -388,6 +402,10 @@ const addAnyway = () => {
                     @click="$emit('cancel')"
                 />
                 <ButtonLink v-else :href="cancelHref" severity="secondary" outlined label="Cancel" />
+
+                <PrimaryButton :disabled="form.processing">
+                    {{ form.processing ? 'Saving…' : submitLabel }}
+                </PrimaryButton>
             </div>
         </div>
     </form>

@@ -1,6 +1,7 @@
 <script setup>
 import BulkAnswersModal from '@/Components/BulkAnswersModal.vue';
 import ButtonLink from '@/Components/ButtonLink.vue';
+import PersonPhoto from '@/Components/PersonPhoto.vue';
 import QuickEditPersonModal from '@/Components/QuickEditPersonModal.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { canDial, telHref } from '@/dial';
@@ -45,9 +46,9 @@ const selected = ref(
     ),
 );
 
-const showFilters = ref(
-    Object.values(selected.value).some((values) => values.length > 0),
-);
+// Collapsed until asked for, every time: a default filter is still applied, and
+// the badge on the button says how many, but the panel never opens itself.
+const showFilters = ref(false);
 
 const activeCount = computed(() =>
     Object.values(selected.value).reduce((total, values) => total + values.length, 0),
@@ -217,6 +218,42 @@ const clearFilters = () => {
     visit();
 };
 
+/** Whether the chips on screen are already what this category opens with. */
+const isDefaultAlready = (category) => {
+    const chosen = [...(selected.value[category.id] ?? [])].sort();
+    const stored = [...(category.default_filter ?? [])].sort();
+
+    return (
+        category.has_default &&
+        chosen.length === stored.length &&
+        chosen.every((value, at) => value === stored[at])
+    );
+};
+
+const defaultLabel = (category) => {
+    if (isDefaultAlready(category)) {
+        return 'Opens like this';
+    }
+
+    if ((selected.value[category.id] ?? []).length === 0) {
+        return 'Stop opening with a filter';
+    }
+
+    return category.has_default ? 'Make this the default' : 'Always open like this';
+};
+
+/*
+ * The values go as they are stored — choice ids, yes / no, or "unset" — so the
+ * server has nothing to translate.
+ */
+const saveDefault = (category) => {
+    router.post(
+        route('categories.default-filter', category.id),
+        { values: selected.value[category.id] ?? [] },
+        { preserveScroll: true },
+    );
+};
+
 const clearSearch = () => {
     term.value = '';
 };
@@ -300,9 +337,25 @@ const clearSearch = () => {
 
                 <div v-if="showFilters" class="mt-4 space-y-4">
                     <div v-for="category in filterOptions" :key="category.id">
-                        <p class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                            {{ category.name }}
-                        </p>
+                        <div class="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                {{ category.name }}
+                            </p>
+
+                            <!-- Set the default where the filtering actually
+                                 happens, instead of rebuilding it in settings. -->
+                            <Button
+                                v-if="(selected[category.id] ?? []).length || category.has_default"
+                                :label="defaultLabel(category)"
+                                :severity="isDefaultAlready(category) ? 'secondary' : 'warn'"
+                                :disabled="isDefaultAlready(category)"
+                                text
+                                size="small"
+                                class="!py-0.5 !text-xs"
+                                :aria-label="`${defaultLabel(category)} for ${category.name}`"
+                                @click="saveDefault(category)"
+                            />
+                        </div>
 
                         <SelectButton
                             v-model="selected[category.id]"
@@ -344,6 +397,17 @@ const clearSearch = () => {
                                     label="Clear search"
                                     @click="clearSearch"
                                 />
+
+                                <!-- Searching for somebody who is not in the
+                                     rolodex is the usual way a person gets
+                                     added, so the search carries into the form. -->
+                                <ButtonLink
+                                    v-if="term"
+                                    :href="route('people.create', { name: term })"
+                                >
+                                    <i class="pi pi-plus mr-2" aria-hidden="true" />
+                                    Add “{{ term }}”
+                                </ButtonLink>
                             </div>
                         </template>
 
@@ -363,10 +427,11 @@ const clearSearch = () => {
             </Card>
 
             <!-- The list -->
-            <ul v-else class="mt-4 grid gap-3 sm:mt-8 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+            <ul v-else class="mt-4 grid gap-2.5 sm:mt-6 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
                 <li v-for="person in people.data" :key="person.id" class="relative">
                     <Card
                         class="h-full"
+                        :pt="{ body: { class: '!p-3 sm:!p-4' } }"
                         :class="
                             inSelection(person.id)
                                 ? 'ring-2 ring-blue-500'
@@ -378,7 +443,7 @@ const clearSearch = () => {
                                 <div class="min-w-0 flex-1">
                                     <Link
                                         :href="route('people.show', person.id)"
-                                        class="font-semibold leading-tight text-gray-900 hover:underline"
+                                        class="text-lg font-semibold leading-snug tracking-tight text-gray-900 hover:underline"
                                         :tabindex="selecting ? -1 : undefined"
                                     >
                                         {{ person.name }}
@@ -393,6 +458,11 @@ const clearSearch = () => {
                                             :key="tag.label"
                                             :value="tag.label"
                                             severity="secondary"
+                                            :class="
+                                                tag.colour
+                                                    ? ''
+                                                    : '!border !border-gray-500 !bg-transparent !text-gray-700'
+                                            "
                                             :style="tagStyle(tag.colour)"
                                         />
                                     </div>
@@ -420,21 +490,9 @@ const clearSearch = () => {
                                      right, which frees the whole width for the name and
                                      the categories. -->
                                 <div
-                                    class="relative z-20 flex shrink-0 flex-col items-center gap-1.5"
+                                    class="relative z-20 flex shrink-0 flex-col items-stretch gap-1.5"
                                 >
-                                    <Avatar
-                                        v-if="person.photo_url"
-                                        :image="person.photo_url"
-                                        shape="square"
-                                        size="large"
-                                    />
-                                    <Avatar
-                                        v-else
-                                        :label="initials(person.name)"
-                                        shape="square"
-                                        size="large"
-                                        class="bg-gray-100 text-gray-500"
-                                    />
+                                    <PersonPhoto :src="person.photo_url" :name="person.name" />
 
                                     <template v-if="!selecting">
                                         <ButtonLink
@@ -443,8 +501,7 @@ const clearSearch = () => {
                                             external
                                             severity="secondary"
                                             outlined
-                                            rounded
-                                            size="small"
+                                            class="!h-12 !w-12 !rounded-md"
                                             :title="`Call ${person.name}`"
                                             :aria-label="`Call ${person.name}`"
                                         >
@@ -455,8 +512,7 @@ const clearSearch = () => {
                                             icon="pi pi-pencil"
                                             severity="secondary"
                                             outlined
-                                            rounded
-                                            size="small"
+                                            class="!h-12 !w-12 !rounded-md"
                                             :title="`Edit details for ${person.name}`"
                                             :aria-label="`Edit details for ${person.name}`"
                                             @click.stop.prevent="openQuickEdit(person.id, 'details')"
@@ -466,8 +522,7 @@ const clearSearch = () => {
                                             icon="pi pi-tag"
                                             severity="secondary"
                                             outlined
-                                            rounded
-                                            size="small"
+                                            class="!h-12 !w-12 !rounded-md"
                                             :title="`Edit categories for ${person.name}`"
                                             :aria-label="`Edit categories for ${person.name}`"
                                             @click.stop.prevent="openQuickEdit(person.id, 'tags')"
