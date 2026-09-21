@@ -29,6 +29,7 @@ const sizes = {
     md: 'h-12 w-12 text-base',
     lg: 'h-20 w-20 text-2xl',
     xl: 'h-28 w-28 text-3xl',
+    '2xl': 'h-36 w-36 text-4xl',
 };
 
 const initials = computed(() =>

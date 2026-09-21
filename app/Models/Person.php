@@ -41,9 +41,12 @@ class Person extends Model
      * The tags shown on a person's card. A category can be kept off the card
      * entirely, can hide its own name, and each answer carries its own colour.
      *
+     * `$withNames` forces the category name on, for places with room for it — the
+     * team builder deck, where "BB" on its own is not much to decide on.
+     *
      * @return array<int, array{label: string, colour: ?string}>
      */
-    public function categoryTags(int $limit = 6): array
+    public function categoryTags(int $limit = 6, bool $withNames = false): array
     {
         $tags = [];
 
@@ -74,7 +77,7 @@ class Person extends Model
 
                 foreach ($answers as $answer) {
                     $tags[] = [
-                        'label' => $category->show_name_on_card
+                        'label' => $category->show_name_on_card || $withNames
                             ? $category->name.': '.$answer['label']
                             : $answer['label'],
                         'colour' => $answer['colour'],

@@ -120,6 +120,20 @@ test('a question left alone is not a filter', function () {
         ->assertInertia(fn (Assert $page) => $page->has('eligible', 3));
 });
 
+test('the deck shows category names even when the card hides them', function () {
+    [$user, $level, $a, $bb] = teamFixture();
+
+    // Off for the list, on for the deck: there is room there, and "BB" alone is
+    // not much to decide on.
+    $level->update(['show_name_on_card' => false]);
+
+    $this->actingAs($user)
+        ->get(route('teams.deck', ['a' => [$level->id => $bb->id]]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('eligible.0.tags.0.label', 'Skill level: BB')
+        );
+});
+
 test('someone who said no to that date is not asked again', function () {
     [$user, , , , , , $ace] = teamFixture();
 

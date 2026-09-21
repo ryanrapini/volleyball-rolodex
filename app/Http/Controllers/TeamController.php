@@ -93,7 +93,8 @@ class TeamController extends Controller
                 'name' => $person->name,
                 'phone' => $person->phone,
                 'photo_url' => PersonPhotos::url($person->photo_path),
-                'tags' => $person->categoryTags(8),
+                // The full screen has room for the category names.
+                'tags' => $person->categoryTags(12, withNames: true),
             ])
             ->all();
 

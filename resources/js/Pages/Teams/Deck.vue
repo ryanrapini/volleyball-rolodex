@@ -4,11 +4,9 @@ import ButtonLink from '@/Components/ButtonLink.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PersonPhoto from '@/Components/PersonPhoto.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { tagStyle } from '@/tagColour';
 import { Head, router } from '@inertiajs/vue3';
 import Button from 'primevue/button';
 import Card from 'primevue/card';
-import Tag from 'primevue/tag';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 /*
@@ -221,7 +219,8 @@ const save = () => {
                 <!-- The deck -->
                 <div v-if="!finished" class="relative">
                     <div
-                        class="relative touch-none select-none"
+                        :key="current.id"
+                        class="deck-in relative touch-none select-none"
                         :style="cardStyle"
                         @pointerdown.prevent="startDrag"
                         @pointermove.prevent="onDrag"
@@ -232,30 +231,32 @@ const save = () => {
                         <Card :pt="{ body: { class: '!p-4' } }">
                             <template #content>
                                 <div class="flex flex-col items-center text-center">
-                                    <PersonPhoto :src="current.photo_url" :name="current.name" size="xl" />
+                                    <PersonPhoto :src="current.photo_url" :name="current.name" size="2xl" />
 
                                     <p class="mt-3 text-xl font-semibold tracking-tight text-gray-900">
                                         {{ current.name }}
                                     </p>
 
-                                    <div v-if="current.tags.length" class="mt-2 flex flex-wrap justify-center gap-1.5">
-                                        <Tag
+                                    <!-- One answer per line, category name and all:
+                                         this is the screen the decision is made on. -->
+                                    <ul
+                                        v-if="current.tags.length"
+                                        class="mt-4 w-full space-y-1.5 text-left"
+                                    >
+                                        <li
                                             v-for="tag in current.tags"
                                             :key="tag.label"
-                                            :value="tag.label"
-                                            severity="secondary"
-                                            :class="
-                                                tag.colour
-                                                    ? ''
-                                                    : '!border !border-gray-500 !bg-transparent !text-gray-700'
-                                            "
-                                            :style="tagStyle(tag.colour)"
-                                        />
-                                    </div>
-
-                                    <p v-if="current.phone" class="mt-3 text-sm text-gray-600">
-                                        {{ current.phone }}
-                                    </p>
+                                            class="flex items-center gap-2 text-sm text-gray-700"
+                                        >
+                                            <span
+                                                class="h-2.5 w-2.5 shrink-0 rounded-full"
+                                                :class="tag.colour ? '' : 'bg-gray-300'"
+                                                :style="tag.colour ? { background: tag.colour } : {}"
+                                                aria-hidden="true"
+                                            />
+                                            <span>{{ tag.label }}</span>
+                                        </li>
+                                    </ul>
                                 </div>
                             </template>
                         </Card>
@@ -355,3 +356,40 @@ const save = () => {
         </div>
     </AuthenticatedLayout>
 </template>
+
+<style scoped>
+/*
+ * A new card announces itself. Swiping is quick, and without this it is easy to
+ * miss that the deck has moved on to somebody else.
+ *
+ * Only opacity animates: the drag transform lives on this same element, and an
+ * animation touching transform would fight it.
+ */
+.deck-in {
+    animation: deck-blink 420ms ease-out both;
+}
+
+@keyframes deck-blink {
+    0% {
+        opacity: 0.15;
+    }
+
+    30% {
+        opacity: 1;
+    }
+
+    55% {
+        opacity: 0.45;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .deck-in {
+        animation: none;
+    }
+}
+</style>
