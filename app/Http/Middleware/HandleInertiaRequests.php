@@ -37,6 +37,8 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'status' => fn (): ?string => $request->session()->get('status'),
                 'error' => fn (): ?string => $request->session()->get('error'),
+                // The person just added, so the form can offer to take another.
+                'added' => fn (): ?array => $request->session()->get('added'),
             ],
         ];
     }

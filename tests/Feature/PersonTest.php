@@ -81,7 +81,7 @@ test('a person can be added', function () {
             'email' => 'marcus@example.com',
             'notes' => 'Great setter.',
         ])
-        ->assertRedirect(route('people.show', $user->people()->sole()));
+        ->assertRedirect(route('people.create'));
 
     $this->assertDatabaseHas('people', [
         'user_id' => $user->id,
@@ -97,7 +97,7 @@ test('a person can be added with only a name', function () {
 
     $this->actingAs($user)
         ->post(route('people.store'), ['name' => 'Just A Name'])
-        ->assertRedirect(route('people.show', $user->people()->sole()));
+        ->assertRedirect(route('people.create'));
 
     $person = $user->people()->sole();
 
@@ -200,14 +200,30 @@ test('a saved person keeps their searchable digits in step with the phone number
     expect($person->refresh()->phone_digits)->toBeNull();
 });
 
-test('the confirmation message is shared with the page after adding someone', function () {
+test('adding someone lands back on the form offering to add another', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
         ->followingRedirects()
         ->post(route('people.store'), ['name' => 'Marcus Hale'])
         ->assertInertia(fn (Assert $page) => $page
-            ->component('People/Show')
-            ->where('flash.status', 'Added Marcus Hale to your rolodex.')
+            ->component('People/Create')
+            ->where('flash.added', [
+                'id' => $user->people()->sole()->id,
+                'name' => 'Marcus Hale',
+            ])
             ->etc());
+});
+
+test('the form can arrive already holding the name that was searched for', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get(route('people.create', ['name' => 'Nadia Bramble']))
+        ->assertInertia(fn (Assert $page) => $page->where('suggestedName', 'Nadia Bramble'));
+
+    // Without one, the field starts empty rather than holding "null".
+    $this->actingAs($user)
+        ->get(route('people.create'))
+        ->assertInertia(fn (Assert $page) => $page->where('suggestedName', ''));
 });
