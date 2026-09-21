@@ -5,7 +5,7 @@ import QuickEditPersonModal from '@/Components/QuickEditPersonModal.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { canDial, telHref } from '@/dial';
 import { tagStyle } from '@/tagColour';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import Avatar from 'primevue/avatar';
 import Badge from 'primevue/badge';
 import Button from 'primevue/button';
@@ -16,7 +16,7 @@ import InputText from 'primevue/inputtext';
 import Paginator from 'primevue/paginator';
 import SelectButton from 'primevue/selectbutton';
 import Tag from 'primevue/tag';
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 const props = defineProps({
     people: {
@@ -58,6 +58,63 @@ const activeCount = computed(() =>
 const defaulted = computed(
     () => new Set(props.filterOptions.filter((c) => c.has_default).map((c) => c.id)),
 );
+
+/*
+ * Coming back to the list should land where they left off, so the position is
+ * kept in local storage, per account.
+ *
+ * The list's own address is captured once, when this page is built, because by
+ * the time the component goes away the address bar is already showing the person
+ * they opened.
+ */
+const scrollKey = `rolodex:people-scroll:${usePage().props.auth?.user?.id ?? 'guest'}`;
+const listUrl = window.location.href;
+
+const readScroll = () => {
+    try {
+        const saved = JSON.parse(window.localStorage.getItem(scrollKey) ?? 'null');
+
+        return saved && typeof saved.y === 'number' ? saved : null;
+    } catch {
+        return null;
+    }
+};
+
+const rememberScroll = () => {
+    window.localStorage.setItem(scrollKey, JSON.stringify({ url: listUrl, y: window.scrollY }));
+};
+
+let queued = false;
+
+const onScroll = () => {
+    if (queued) {
+        return;
+    }
+
+    queued = true;
+
+    window.requestAnimationFrame(() => {
+        rememberScroll();
+        queued = false;
+    });
+};
+
+onMounted(() => {
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    const saved = readScroll();
+
+    // The same list only: a different search, set of filters or page is a
+    // different place to be.
+    if (saved && saved.url === listUrl && saved.y > 0) {
+        nextTick(() => window.scrollTo({ top: saved.y }));
+    }
+});
+
+onBeforeUnmount(() => {
+    rememberScroll();
+    window.removeEventListener('scroll', onScroll);
+});
 
 const initials = (name) =>
     name
