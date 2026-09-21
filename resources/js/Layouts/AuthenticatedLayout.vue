@@ -120,6 +120,11 @@ watch(() => page.props.flash, showFlash, { deep: true });
 
             <template #end>
                 <div class="flex items-center gap-2">
+                    <!-- Whatever the current page wants within thumb reach on a
+                         phone, beside the menu button rather than inside the
+                         menu. -->
+                    <slot name="actions" />
+
                     <div v-if="canUseAi" class="hidden md:block">
                         <Button
                             label="Assistant"

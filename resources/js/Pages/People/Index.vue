@@ -117,6 +117,29 @@ onBeforeUnmount(() => {
     window.removeEventListener('scroll', onScroll);
 });
 
+/*
+ * Photos only: the same people as a wall of faces, for picking somebody out by
+ * sight. Kept per account in local storage, so the view they left in is the view
+ * they come back to.
+ */
+const photosKey = `rolodex:photos-only:${usePage().props.auth?.user?.id ?? 'guest'}`;
+const viewMode = ref(window.localStorage.getItem(photosKey) === '1' ? 'photos' : 'details');
+const photosOnly = computed(() => viewMode.value === 'photos');
+
+const viewModes = [
+    { value: 'details', icon: 'pi pi-list', label: 'Details' },
+    { value: 'photos', icon: 'pi pi-image', label: 'Photos' },
+];
+
+watch(viewMode, (mode) => {
+    window.localStorage.setItem(photosKey, mode === 'photos' ? '1' : '0');
+
+    // There is nothing to edit in the photo view, so selection steps aside.
+    if (mode === 'photos' && selecting.value) {
+        toggleSelecting();
+    }
+});
+
 const initials = (name) =>
     name
         .split(/\s+/)
@@ -263,76 +286,118 @@ const clearSearch = () => {
     <Head :title="term ? `Search: ${term}` : 'People'" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <div class="flex flex-wrap items-end justify-between gap-4">
-                <div>
-                    <h1 class="text-2xl font-semibold text-gray-900">People</h1>
-                    <p class="mt-1 text-sm text-gray-600">
-                        {{ people.total }}
-                        {{ people.total === 1 ? 'person' : 'people' }}
-                        <span v-if="term">matching “{{ term }}”</span>
-                    </p>
-
-                    <p
-                        v-if="!$page.props.auth.user.can_use_ai"
-                        class="mt-1 text-xs text-gray-500"
-                    >
-                        <i class="pi pi-info-circle mr-1" aria-hidden="true" />
-                        The AI assistant unlocks once your account is approved.
-                    </p>
-                </div>
-
-                <ButtonLink :href="route('people.create')">
-                    <i class="pi pi-plus mr-2" />
-                    Add person
-                </ButtonLink>
-            </div>
+        <template #actions>
+            <!-- On a phone the header carries the one action worth reaching for
+                 without opening the menu: a person and a plus. -->
+            <ButtonLink
+                :href="route('people.create')"
+                rounded
+                class="sm:!hidden"
+                aria-label="Add person"
+            >
+                <i class="pi pi-user-plus" />
+            </ButtonLink>
         </template>
 
-        <div class="mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
-            <IconField>
-                <InputIcon class="pi pi-search" />
-                <InputText
-                    id="search"
-                    v-model="term"
-                    type="search"
-                    fluid
-                    placeholder="Name, phone, email or notes…"
-                    autocomplete="off"
-                />
-            </IconField>
+        <Head :title="term ? `Search: ${term}` : 'People'" />
+
+        <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
+            <p v-if="!$page.props.auth.user.can_use_ai" class="mb-3 text-xs text-gray-500">
+                <i class="pi pi-info-circle mr-1" aria-hidden="true" />
+                The AI assistant unlocks once your account is approved.
+            </p>
+
+            <!-- Search, with the view toggle at its right where the thumb is. -->
+            <div class="flex items-center gap-2">
+                <div class="min-w-0 flex-1">
+                    <IconField>
+                        <InputIcon class="pi pi-search" />
+                        <InputText
+                            id="search"
+                            v-model="term"
+                            type="search"
+                            fluid
+                            placeholder="Name, phone, email or notes…"
+                            autocomplete="off"
+                        />
+                    </IconField>
+                </div>
+
+                <SelectButton
+                    v-model="viewMode"
+                    :options="viewModes"
+                    option-value="value"
+                    :allow-empty="false"
+                    size="small"
+                    class="shrink-0"
+                >
+                    <template #option="slotProps">
+                        <i
+                            :class="slotProps.option.icon"
+                            :title="`${slotProps.option.label} view`"
+                            :aria-label="`${slotProps.option.label} view`"
+                        />
+                    </template>
+                </SelectButton>
+            </div>
 
             <!-- Filters and selection -->
             <div v-if="filterOptions.length" class="mt-5">
-                <div class="flex flex-wrap items-center gap-2">
+                <!-- One row, always: the count gives way before the buttons do. -->
+                <div class="flex flex-nowrap items-center gap-2">
                     <Button
                         severity="secondary"
                         outlined
                         size="small"
+                        class="shrink-0"
                         :aria-expanded="showFilters"
                         @click="showFilters = !showFilters"
                     >
                         <i class="pi pi-filter mr-2" />
-                        {{ showFilters ? 'Hide filters' : 'Filters' }}
+                        {{ showFilters ? 'Hide' : 'Filters' }}
                         <Badge v-if="activeCount" :value="activeCount" class="ml-2" />
                     </Button>
+
+                    <span class="min-w-0 truncate text-sm text-gray-600">
+                        {{ people.total }}
+                        {{ people.total === 1 ? 'person' : 'people' }}
+                        <span v-if="term">matching “{{ term }}”</span>
+                    </span>
 
                     <Button
                         v-if="activeCount"
                         link
                         size="small"
-                        label="Clear filters"
+                        class="shrink-0"
+                        label="Clear"
                         @click="clearFilters"
                     />
 
-                    <Button
-                        :severity="selecting ? 'primary' : 'secondary'"
-                        :outlined="!selecting"
-                        size="small"
-                        :aria-pressed="selecting"
-                        :label="selecting ? 'Done selecting' : 'Select people'"
-                        @click="toggleSelecting"
-                    />
+                    <!-- The actions sit at the right, under the thumb. -->
+                    <span class="ml-auto flex shrink-0 items-center gap-2">
+                        <Button
+                            v-if="!photosOnly"
+                            :severity="selecting ? 'primary' : 'secondary'"
+                            :outlined="!selecting"
+                            size="small"
+                            :aria-pressed="selecting"
+                            :label="selecting ? 'Done selecting' : 'Select people'"
+                            @click="toggleSelecting"
+                        />
+
+                        <!-- The one action worth having on the right, from the
+                             tablet width up. On a phone it lives in the header.
+                             The importance is needed: PrimeVue's button stylesheet
+                             loads after Tailwind's and would win on display. -->
+                        <ButtonLink
+                            v-if="!photosOnly"
+                            :href="route('people.create')"
+                            class="!hidden sm:!inline-flex"
+                        >
+                            <i class="pi pi-plus mr-2" />
+                            Add person
+                        </ButtonLink>
+                    </span>
                 </div>
 
                 <div v-if="showFilters" class="mt-4 space-y-4">
@@ -425,6 +490,34 @@ const clearSearch = () => {
                     </div>
                 </template>
             </Card>
+
+            <!-- Photos only: three across on a phone, name on the picture. -->
+            <ul
+                v-else-if="photosOnly"
+                class="mt-4 grid grid-cols-3 gap-2.5 sm:mt-6 sm:grid-cols-4 sm:gap-3 lg:grid-cols-6"
+            >
+                <li v-for="person in people.data" :key="person.id">
+                    <Link :href="route('people.show', person.id)" class="block">
+                        <div
+                            class="relative aspect-square overflow-hidden rounded-md bg-gray-200 transition-shadow hover:shadow-md"
+                        >
+                            <img
+                                v-if="person.photo_url"
+                                :src="person.photo_url"
+                                :alt="person.name"
+                                class="h-full w-full object-cover"
+                            />
+
+                            <span
+                                class="absolute bottom-1.5 right-1.5 max-w-[85%] truncate rounded bg-black/60 px-1.5 py-0.5 text-[11px] font-semibold leading-tight text-white backdrop-blur-sm sm:text-xs"
+                                :title="person.name"
+                            >
+                                {{ person.name }}
+                            </span>
+                        </div>
+                    </Link>
+                </li>
+            </ul>
 
             <!-- The list -->
             <ul v-else class="mt-4 grid gap-2.5 sm:mt-6 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
