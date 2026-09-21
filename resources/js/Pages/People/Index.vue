@@ -4,7 +4,7 @@ import ButtonLink from '@/Components/ButtonLink.vue';
 import PersonPhoto from '@/Components/PersonPhoto.vue';
 import QuickEditPersonModal from '@/Components/QuickEditPersonModal.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { canDial, telHref } from '@/dial';
+import { canDial, smsHref } from '@/dial';
 import { tagStyle } from '@/tagColour';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import Avatar from 'primevue/avatar';
@@ -467,13 +467,9 @@ const clearSearch = () => {
                                         />
                                     </div>
 
-                                    <p v-if="person.phone" class="mt-2 text-sm text-gray-700">
-                                        {{ person.phone }}
-                                    </p>
-
                                     <p
                                         v-if="person.email"
-                                        class="mt-0.5 break-all text-sm text-gray-500"
+                                        class="mt-2 break-all text-sm text-gray-500"
                                     >
                                         {{ person.email }}
                                     </p>
@@ -492,22 +488,26 @@ const clearSearch = () => {
                                 <div
                                     class="relative z-20 flex shrink-0 flex-col items-stretch gap-1.5"
                                 >
-                                    <PersonPhoto :src="person.photo_url" :name="person.name" />
+                                    <!-- The photo is the shortcut to texting
+                                         them: a tap opens whichever messaging
+                                         app the phone uses. -->
+                                    <a
+                                        v-if="canDial(person.phone)"
+                                        :href="smsHref(person.phone)"
+                                        class="block rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2"
+                                        :title="`Text ${person.name}`"
+                                        :aria-label="`Text ${person.name}`"
+                                    >
+                                        <PersonPhoto :src="person.photo_url" :name="person.name" />
+                                    </a>
+
+                                    <PersonPhoto
+                                        v-else
+                                        :src="person.photo_url"
+                                        :name="person.name"
+                                    />
 
                                     <template v-if="!selecting">
-                                        <ButtonLink
-                                            v-if="canDial(person.phone)"
-                                            :href="telHref(person.phone)"
-                                            external
-                                            severity="secondary"
-                                            outlined
-                                            class="!h-12 !w-12 !rounded-md"
-                                            :title="`Call ${person.name}`"
-                                            :aria-label="`Call ${person.name}`"
-                                        >
-                                            <i class="pi pi-phone" />
-                                        </ButtonLink>
-
                                         <Button
                                             icon="pi pi-pencil"
                                             severity="secondary"

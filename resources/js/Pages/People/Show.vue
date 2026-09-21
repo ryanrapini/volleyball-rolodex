@@ -96,29 +96,30 @@ const deletePerson = () => {
                                     </dt>
                                     <dd class="text-base text-gray-900">
                                         <template v-if="person.phone">
-                                            <span class="block">{{ person.phone }}</span>
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <span>{{ person.phone }}</span>
 
-                                            <div
-                                                v-if="canDial(person.phone)"
-                                                class="mt-2 flex flex-wrap gap-2"
-                                            >
                                                 <ButtonLink
+                                                    v-if="canDial(person.phone)"
                                                     :href="telHref(person.phone)"
                                                     external
+                                                    rounded
                                                     size="small"
                                                 >
-                                                    <i class="pi pi-phone mr-2" />
+                                                    <i class="pi pi-phone mr-1.5" />
                                                     Call
                                                 </ButtonLink>
 
                                                 <ButtonLink
+                                                    v-if="canDial(person.phone)"
                                                     :href="smsHref(person.phone)"
                                                     external
                                                     severity="secondary"
                                                     outlined
+                                                    rounded
                                                     size="small"
                                                 >
-                                                    <i class="pi pi-comment mr-2" />
+                                                    <i class="pi pi-comment mr-1.5" />
                                                     Text
                                                 </ButtonLink>
                                             </div>

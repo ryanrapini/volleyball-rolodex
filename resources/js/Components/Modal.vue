@@ -44,3 +44,13 @@ const widths = {
         <slot />
     </Dialog>
 </template>
+
+<style scoped>
+/*
+ * With no title in the header the close button is the only child, and the
+ * header's space-between drops it at the left edge. A thumb reaches the right.
+ */
+:deep(.p-dialog-header > .p-dialog-close-button) {
+    margin-left: auto;
+}
+</style>
