@@ -178,7 +178,7 @@ watch(() => page.props.flash, showFlash, { deep: true });
                     :icon="item.icon"
                     :text="!route().current(item.active)"
                     severity="secondary"
-                    class="justify-start"
+                    class="!justify-start"
                     @click="go(item.route)"
                 />
                 <Button
@@ -187,7 +187,7 @@ watch(() => page.props.flash, showFlash, { deep: true });
                     icon="pi pi-comments"
                     text
                     severity="secondary"
-                    class="justify-start"
+                    class="!justify-start"
                     @click="
                         mobileNav = false;
                         assistantOpen = true;
@@ -208,7 +208,7 @@ watch(() => page.props.flash, showFlash, { deep: true });
                     icon="pi pi-user"
                     text
                     severity="secondary"
-                    class="justify-start"
+                    class="!justify-start"
                     @click="go('profile.edit')"
                 />
                 <Button
@@ -216,7 +216,7 @@ watch(() => page.props.flash, showFlash, { deep: true });
                     icon="pi pi-sign-out"
                     text
                     severity="secondary"
-                    class="justify-start"
+                    class="!justify-start"
                     @click="router.post(route('logout'))"
                 />
             </div>

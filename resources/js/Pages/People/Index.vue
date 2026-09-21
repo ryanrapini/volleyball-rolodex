@@ -367,7 +367,6 @@ const clearSearch = () => {
                     <!-- The actions sit at the right, under the thumb. -->
                     <span class="ml-auto flex shrink-0 items-center gap-2">
                         <Button
-                            v-if="!photosOnly"
                             :severity="selecting ? 'primary' : 'secondary'"
                             :outlined="!selecting"
                             size="small"
@@ -499,10 +498,15 @@ const clearSearch = () => {
                 v-else-if="photosOnly"
                 class="mt-4 grid grid-cols-3 gap-2.5 sm:mt-6 sm:grid-cols-4 sm:gap-3 lg:grid-cols-6"
             >
-                <li v-for="person in people.data" :key="person.id">
-                    <Link :href="route('people.show', person.id)" class="block">
+                <li v-for="person in people.data" :key="person.id" class="relative">
+                    <Link
+                        :href="route('people.show', person.id)"
+                        class="block"
+                        :tabindex="selecting ? -1 : undefined"
+                    >
                         <div
                             class="relative aspect-square overflow-hidden rounded-md bg-gray-200 transition-shadow hover:shadow-md"
+                            :class="inSelection(person.id) ? 'ring-2 ring-blue-500' : ''"
                         >
                             <img
                                 v-if="person.photo_url"
@@ -519,6 +523,31 @@ const clearSearch = () => {
                             </span>
                         </div>
                     </Link>
+
+                    <!-- While selecting, this sits over the tile so a tap picks
+                         the person instead of opening them. -->
+                    <button
+                        v-if="selecting"
+                        type="button"
+                        class="absolute inset-0 z-10 cursor-pointer rounded-md border-2 border-transparent"
+                        :class="inSelection(person.id) ? 'border-blue-500 bg-blue-500/10' : ''"
+                        :aria-pressed="inSelection(person.id)"
+                        :aria-label="`${inSelection(person.id) ? 'Deselect' : 'Select'} ${person.name}`"
+                        @click="toggleSelected(person.id)"
+                    ></button>
+
+                    <span v-if="selecting" class="absolute right-1.5 top-1.5 z-20">
+                        <i
+                            v-if="inSelection(person.id)"
+                            class="pi pi-check-circle text-lg text-blue-600"
+                            aria-hidden="true"
+                        />
+                        <i
+                            v-else
+                            class="pi pi-circle text-lg text-white/90 drop-shadow"
+                            aria-hidden="true"
+                        />
+                    </span>
                 </li>
             </ul>
 
