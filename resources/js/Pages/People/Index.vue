@@ -364,15 +364,6 @@ const clearSearch = () => {
                         <span v-if="term">matching “{{ term }}”</span>
                     </span>
 
-                    <Button
-                        v-if="activeCount"
-                        link
-                        size="small"
-                        class="shrink-0"
-                        label="Clear"
-                        @click="clearFilters"
-                    />
-
                     <!-- The actions sit at the right, under the thumb. -->
                     <span class="ml-auto flex shrink-0 items-center gap-2">
                         <Button
@@ -401,6 +392,18 @@ const clearSearch = () => {
                 </div>
 
                 <div v-if="showFilters" class="mt-4 space-y-4">
+                    <!-- Clearing lives with the filters themselves: the row above
+                         has to stay on one line, and this only appears when there
+                         is something to clear. -->
+                    <div v-if="activeCount" class="flex items-center justify-end">
+                        <Button
+                            link
+                            size="small"
+                            label="Clear filters"
+                            @click="clearFilters"
+                        />
+                    </div>
+
                     <div v-for="category in filterOptions" :key="category.id">
                         <div class="mb-1.5 flex flex-wrap items-center justify-between gap-2">
                             <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">
