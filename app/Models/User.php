@@ -64,6 +64,16 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * The teams this user has put together.
+     *
+     * @return HasMany<Team, $this>
+     */
+    public function teams(): HasMany
+    {
+        return $this->hasMany(Team::class);
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>

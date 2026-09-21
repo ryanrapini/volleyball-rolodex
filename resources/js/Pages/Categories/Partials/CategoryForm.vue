@@ -328,6 +328,33 @@ const setOptionColour = (index, colour) => {
             </div>
         </div>
 
+        <div class="space-y-4 border-t border-gray-200 pt-5">
+            <div>
+                <InputLabel value="Team Builder" />
+
+                <p class="mt-1 text-xs text-gray-500">
+                    Categories you tick here become the questions Team Builder asks before it
+                    suggests anybody.
+                </p>
+            </div>
+
+            <label class="flex items-start gap-3">
+                <Checkbox
+                    :checked="form.in_team_builder"
+                    @update:checked="form.in_team_builder = $event"
+                />
+
+                <span class="min-w-0">
+                    <span class="block text-sm font-medium text-gray-700">
+                        Ask me this when building a team
+                    </span>
+                    <span class="mt-0.5 block text-xs leading-snug text-gray-500">
+                        Your answer narrows down who is eligible — "skill level A or BB", say.
+                    </span>
+                </span>
+            </label>
+        </div>
+
         <div class="flex flex-wrap items-center justify-end gap-3 border-t border-gray-200 pt-5">
             <ButtonLink :href="cancelHref" severity="secondary" outlined label="Cancel" />
 

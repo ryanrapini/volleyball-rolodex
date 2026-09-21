@@ -32,6 +32,8 @@ const initials = computed(() =>
 
 const navItems = computed(() => [
     { label: 'People', icon: 'pi pi-users', route: 'people.index', active: 'people.*' },
+    { label: 'Team Builder', icon: 'pi pi-bolt', route: 'teams.build', active: 'teams.*' },
+    { label: 'Teams', icon: 'pi pi-flag', route: 'teams.index', active: 'teams.index' },
     { label: 'Categories', icon: 'pi pi-tags', route: 'categories.index', active: 'categories.*' },
     ...(user.value?.is_admin
         ? [{ label: 'Accounts', icon: 'pi pi-cog', route: 'admin.users', active: 'admin.*' }]

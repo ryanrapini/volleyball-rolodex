@@ -5,6 +5,7 @@ use App\Http\Controllers\AiChatController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\PersonController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\TeamController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -23,6 +24,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::resource('people', PersonController::class);
     Route::resource('categories', CategoryController::class)->except('show');
+
+    // Team Builder: questions, then a deck to work through, then the team itself.
+    // The two fixed paths come before the wildcard so /teams/build is not read as
+    // a team id.
+    Route::get('/teams', [TeamController::class, 'index'])->name('teams.index');
+    Route::get('/teams/build', [TeamController::class, 'build'])->name('teams.build');
+    Route::get('/teams/deck', [TeamController::class, 'deck'])->name('teams.deck');
+    Route::post('/teams', [TeamController::class, 'store'])->name('teams.store');
+    Route::get('/teams/{team}', [TeamController::class, 'show'])->name('teams.show');
+    Route::patch('/teams/{team}/people/{person}', [TeamController::class, 'respond'])->name('teams.respond');
+    Route::delete('/teams/{team}', [TeamController::class, 'destroy'])->name('teams.destroy');
 
     // Save the filter state the list should open in, from the filter control
     // itself rather than from the category settings screen.

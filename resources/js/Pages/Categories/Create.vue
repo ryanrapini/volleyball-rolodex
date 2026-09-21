@@ -20,6 +20,7 @@ const form = useForm({
     show_on_card: true,
     show_name_on_card: true,
     colour: null,
+    in_team_builder: false,
 });
 
 const submit = () => {

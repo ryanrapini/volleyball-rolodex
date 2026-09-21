@@ -24,6 +24,7 @@ const form = useForm({
     show_on_card: props.category.show_on_card,
     show_name_on_card: props.category.show_name_on_card,
     colour: props.category.colour,
+    in_team_builder: props.category.in_team_builder,
 });
 
 const submit = () => {

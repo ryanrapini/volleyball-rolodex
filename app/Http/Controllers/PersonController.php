@@ -9,6 +9,7 @@ use App\Models\Category;
 use App\Models\CategoryOption;
 use App\Models\Person;
 use App\Support\DuplicatePeople;
+use App\Support\CategoryFilters;
 use App\Support\PersonAnswers;
 use App\Support\PersonPhotos;
 use Illuminate\Database\Eloquent\Builder;
@@ -367,46 +368,7 @@ class PersonController extends Controller
      */
     private function readFilters(Request $request, Collection $categories): array
     {
-        $submitted = $request->query('f');
-        $submitted = is_array($submitted) ? $submitted : [];
-
-        $filters = [];
-
-        foreach ($categories as $category) {
-            $allowed = array_merge(
-                $category->type === CategoryType::Boolean
-                    ? [self::YES, self::NO]
-                    : $category->options->pluck('id')->all(),
-                [self::UNSET],
-            );
-
-            if (! array_key_exists($category->getKey(), $submitted)) {
-                // Nothing was asked for this category, so open in the state the
-                // owner set as its default.
-                $defaults = array_values(array_intersect($category->default_filter ?? [], $allowed));
-
-                if ($defaults !== []) {
-                    $filters[$category->getKey()] = $defaults;
-                }
-
-                continue;
-            }
-
-            // Present but empty means the owner cleared it, and that has to beat
-            // the default — otherwise a default filter could never be switched off.
-            $kept = array_values(array_unique(array_filter(
-                array_map('trim', explode(',', is_array($submitted[$category->getKey()])
-                    ? implode(',', $submitted[$category->getKey()])
-                    : (string) $submitted[$category->getKey()])),
-                fn (string $value): bool => in_array($value, $allowed, true),
-            )));
-
-            if ($kept !== []) {
-                $filters[$category->getKey()] = $kept;
-            }
-        }
-
-        return $filters;
+        return CategoryFilters::read($request->query('f'), $categories);
     }
 
     /**
@@ -418,32 +380,7 @@ class PersonController extends Controller
      */
     private function applyFilters(Builder $query, array $filters): void
     {
-        foreach ($filters as $categoryId => $values) {
-            // "Unset" is not an answer, it is the absence of one, so it reads as
-            // "has no value row for this category" rather than a value to match.
-            $unset = in_array(self::UNSET, $values, true);
-            $yesNo = array_intersect($values, [self::YES, self::NO]);
-            $optionIds = array_diff($values, [self::YES, self::NO, self::UNSET]);
-
-            $query->where(function (Builder $match) use ($categoryId, $yesNo, $optionIds, $unset): void {
-                if ($unset) {
-                    $match->orWhereDoesntHave('categoryValues', fn (Builder $value_) => $value_
-                        ->where('category_id', $categoryId));
-                }
-
-                foreach ($yesNo as $value) {
-                    $match->orWhereHas('categoryValues', fn (Builder $value_) => $value_
-                        ->where('category_id', $categoryId)
-                        ->where('value', $value === self::YES));
-                }
-
-                if ($optionIds !== []) {
-                    $match->orWhereHas('categoryValues', fn (Builder $value_) => $value_
-                        ->where('category_id', $categoryId)
-                        ->whereIn('category_option_id', array_values($optionIds)));
-                }
-            });
-        }
+        CategoryFilters::apply($query, $filters);
     }
 
     /**
@@ -460,22 +397,7 @@ class PersonController extends Controller
                 'id' => $category->id,
                 'name' => $category->name,
                 'type' => $category->type->value,
-                'chips' => array_merge(
-                    $category->type === CategoryType::Boolean
-                        ? [
-                            ['value' => self::YES, 'label' => 'Yes'],
-                            ['value' => self::NO, 'label' => 'No'],
-                        ]
-                        : $category->options
-                            ->map(fn (CategoryOption $option): array => [
-                                'value' => $option->id,
-                                'label' => $option->label,
-                            ])
-                            ->values()
-                            ->all(),
-                    // Nobody has answered this one yet.
-                    [['value' => self::UNSET, 'label' => 'Unset']],
-                ),
+                'chips' => CategoryFilters::chips($category),
                 'selected' => $filters[$category->getKey()] ?? [],
                 // Told to the browser so it only sends an explicit "cleared"
                 // marker for categories that have a default to clear.

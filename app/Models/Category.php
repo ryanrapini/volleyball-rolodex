@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'type', 'position', 'default_filter', 'show_on_card', 'show_name_on_card', 'colour'])]
+#[Fillable(['name', 'type', 'position', 'default_filter', 'show_on_card', 'show_name_on_card', 'colour', 'in_team_builder'])]
 class Category extends Model
 {
     /** @use HasFactory<CategoryFactory> */
@@ -28,6 +28,7 @@ class Category extends Model
             'default_filter' => 'array',
             'show_on_card' => 'boolean',
             'show_name_on_card' => 'boolean',
+            'in_team_builder' => 'boolean',
         ];
     }
 

@@ -47,6 +47,7 @@ class CategoryController extends Controller
             'show_on_card' => $request->boolean('show_on_card', true),
             'show_name_on_card' => $request->boolean('show_name_on_card', true),
             'colour' => $request->colour(),
+            'in_team_builder' => $request->boolean('in_team_builder'),
         ]);
 
         $this->syncOptions($category, $request->choices());
@@ -80,6 +81,7 @@ class CategoryController extends Controller
             'show_on_card' => $request->boolean('show_on_card', true),
             'show_name_on_card' => $request->boolean('show_name_on_card', true),
             'colour' => $request->colour(),
+            'in_team_builder' => $request->boolean('in_team_builder'),
         ]);
 
         $this->syncOptions($category, $request->choices());
@@ -216,6 +218,7 @@ class CategoryController extends Controller
             'show_on_card' => (bool) $category->show_on_card,
             'show_name_on_card' => (bool) $category->show_name_on_card,
             'colour' => $category->colour,
+            'in_team_builder' => (bool) $category->in_team_builder,
             'options' => $category->options
                 ->map(fn (CategoryOption $option): array => [
                     'id' => $option->id,

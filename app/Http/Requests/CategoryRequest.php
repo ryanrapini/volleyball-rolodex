@@ -41,6 +41,8 @@ class CategoryRequest extends FormRequest
             'show_on_card' => ['nullable', 'boolean'],
             'show_name_on_card' => ['nullable', 'boolean'],
             'colour' => ['nullable', 'string', 'max:32'],
+            // Asked about when a team is being built.
+            'in_team_builder' => ['nullable', 'boolean'],
             // The filter state the people list opens in. Positions of choices for
             // a choice category, or 'yes' / 'no' for a yes-no one.
             'default_filter' => ['nullable', 'array', 'max:30'],
