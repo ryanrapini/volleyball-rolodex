@@ -19,6 +19,11 @@ const form = useForm({
     name: props.category.name,
     type: props.category.type,
     options: props.category.options.map((option) => option.label),
+    option_colours: props.category.options.map((option) => option.colour ?? null),
+    default_filter: props.category.default_filter ?? [],
+    show_on_card: props.category.show_on_card,
+    show_name_on_card: props.category.show_name_on_card,
+    colour: props.category.colour,
 });
 
 const submit = () => {

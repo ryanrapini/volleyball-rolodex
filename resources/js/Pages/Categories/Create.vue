@@ -15,6 +15,11 @@ const form = useForm({
     name: '',
     type: 'boolean',
     options: [],
+    option_colours: [],
+    default_filter: [],
+    show_on_card: true,
+    show_name_on_card: true,
+    colour: null,
 });
 
 const submit = () => {

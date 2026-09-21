@@ -362,26 +362,33 @@ class PersonController extends Controller
     private function readFilters(Request $request, Collection $categories): array
     {
         $submitted = $request->query('f');
-
-        if (! is_array($submitted)) {
-            return [];
-        }
+        $submitted = is_array($submitted) ? $submitted : [];
 
         $filters = [];
 
-        foreach ($submitted as $categoryId => $values) {
-            $category = $categories->firstWhere('id', (string) $categoryId);
-
-            if (! $category instanceof Category) {
-                continue;
-            }
-
+        foreach ($categories as $category) {
             $allowed = $category->type === CategoryType::Boolean
                 ? [self::YES, self::NO]
                 : $category->options->pluck('id')->all();
 
+            if (! array_key_exists($category->getKey(), $submitted)) {
+                // Nothing was asked for this category, so open in the state the
+                // owner set as its default.
+                $defaults = array_values(array_intersect($category->default_filter ?? [], $allowed));
+
+                if ($defaults !== []) {
+                    $filters[$category->getKey()] = $defaults;
+                }
+
+                continue;
+            }
+
+            // Present but empty means the owner cleared it, and that has to beat
+            // the default — otherwise a default filter could never be switched off.
             $kept = array_values(array_unique(array_filter(
-                array_map('trim', explode(',', is_array($values) ? implode(',', $values) : (string) $values)),
+                array_map('trim', explode(',', is_array($submitted[$category->getKey()])
+                    ? implode(',', $submitted[$category->getKey()])
+                    : (string) $submitted[$category->getKey()])),
                 fn (string $value): bool => in_array($value, $allowed, true),
             )));
 
@@ -449,6 +456,9 @@ class PersonController extends Controller
                         ->values()
                         ->all(),
                 'selected' => $filters[$category->getKey()] ?? [],
+                // Told to the browser so it only sends an explicit "cleared"
+                // marker for categories that have a default to clear.
+                'has_default' => ($category->default_filter ?? []) !== [],
             ])
             ->values()
             ->all();

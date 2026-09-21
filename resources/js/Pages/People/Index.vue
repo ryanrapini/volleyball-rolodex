@@ -4,6 +4,7 @@ import ButtonLink from '@/Components/ButtonLink.vue';
 import QuickEditPersonModal from '@/Components/QuickEditPersonModal.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { canDial, telHref } from '@/dial';
+import { tagStyle } from '@/tagColour';
 import { Head, Link, router } from '@inertiajs/vue3';
 import Avatar from 'primevue/avatar';
 import Badge from 'primevue/badge';
@@ -50,6 +51,12 @@ const showFilters = ref(
 
 const activeCount = computed(() =>
     Object.values(selected.value).reduce((total, values) => total + values.length, 0),
+);
+
+// Categories that carry a default filter. Only these need an explicit "cleared"
+// marker in the URL, so the rest can stay out of it.
+const defaulted = computed(
+    () => new Set(props.filterOptions.filter((c) => c.has_default).map((c) => c.id)),
 );
 
 const initials = (name) =>
@@ -114,8 +121,10 @@ const visit = (page = 1) => {
         params.append('q', term.value);
     }
 
+    // A category with a default is always sent, empty value included: that is
+    // how "cleared" is said, and it is the only thing that overrides the default.
     Object.entries(selected.value).forEach(([categoryId, values]) => {
-        if (values.length) {
+        if (values.length || defaulted.value.has(categoryId)) {
             params.append(`f[${categoryId}]`, values.join(','));
         }
     });
@@ -299,21 +308,63 @@ const clearSearch = () => {
             <!-- The list -->
             <ul v-else class="mt-4 grid gap-3 sm:mt-8 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
                 <li v-for="person in people.data" :key="person.id" class="relative">
-                    <Link
-                        :href="route('people.show', person.id)"
-                        class="block h-full"
-                        :tabindex="selecting ? -1 : undefined"
+                    <Card
+                        class="h-full"
+                        :class="
+                            inSelection(person.id)
+                                ? 'ring-2 ring-blue-500'
+                                : 'transition-shadow hover:shadow-md'
+                        "
                     >
-                        <Card
-                            class="h-full"
-                            :class="
-                                inSelection(person.id)
-                                    ? 'ring-2 ring-blue-500'
-                                    : 'transition-shadow hover:shadow-md'
-                            "
-                        >
-                            <template #content>
-                                <div class="flex gap-3 pb-8">
+                        <template #content>
+                            <div class="flex items-start gap-3">
+                                <div class="min-w-0 flex-1">
+                                    <Link
+                                        :href="route('people.show', person.id)"
+                                        class="font-semibold leading-tight text-gray-900 hover:underline"
+                                        :tabindex="selecting ? -1 : undefined"
+                                    >
+                                        {{ person.name }}
+                                    </Link>
+
+                                    <div
+                                        v-if="person.tags.length"
+                                        class="mt-2 flex flex-wrap gap-1.5"
+                                    >
+                                        <Tag
+                                            v-for="tag in person.tags"
+                                            :key="tag.label"
+                                            :value="tag.label"
+                                            severity="secondary"
+                                            :style="tagStyle(tag.colour)"
+                                        />
+                                    </div>
+
+                                    <p v-if="person.phone" class="mt-2 text-sm text-gray-700">
+                                        {{ person.phone }}
+                                    </p>
+
+                                    <p
+                                        v-if="person.email"
+                                        class="mt-0.5 break-all text-sm text-gray-500"
+                                    >
+                                        {{ person.email }}
+                                    </p>
+
+                                    <p
+                                        v-if="person.notes_excerpt"
+                                        class="mt-3 border-t border-gray-200 pt-2 text-xs leading-relaxed text-gray-500"
+                                    >
+                                        {{ person.notes_excerpt }}
+                                    </p>
+                                </div>
+
+                                <!-- The avatar and the actions share one column on the
+                                     right, which frees the whole width for the name and
+                                     the categories. -->
+                                <div
+                                    class="relative z-20 flex shrink-0 flex-col items-center gap-1.5"
+                                >
                                     <Avatar
                                         v-if="person.photo_url"
                                         :image="person.photo_url"
@@ -328,59 +379,70 @@ const clearSearch = () => {
                                         class="bg-gray-100 text-gray-500"
                                     />
 
-                                    <div class="min-w-0 flex-1">
-                                        <p class="font-semibold leading-tight text-gray-900">
-                                            {{ person.name }}
-                                        </p>
-
-                                        <p v-if="person.phone" class="mt-2 text-sm text-gray-700">
-                                            {{ person.phone }}
-                                        </p>
-
-                                        <p
-                                            v-if="person.email"
-                                            class="mt-0.5 break-all text-sm text-gray-500"
+                                    <template v-if="!selecting">
+                                        <ButtonLink
+                                            v-if="canDial(person.phone)"
+                                            :href="telHref(person.phone)"
+                                            external
+                                            severity="secondary"
+                                            outlined
+                                            rounded
+                                            size="small"
+                                            :title="`Call ${person.name}`"
+                                            :aria-label="`Call ${person.name}`"
                                         >
-                                            {{ person.email }}
-                                        </p>
+                                            <i class="pi pi-phone" />
+                                        </ButtonLink>
 
-                                        <p
-                                            v-if="person.notes_excerpt"
-                                            class="mt-3 border-t border-gray-200 pt-2 text-xs leading-relaxed text-gray-500"
-                                        >
-                                            {{ person.notes_excerpt }}
-                                        </p>
+                                        <Button
+                                            icon="pi pi-pencil"
+                                            severity="secondary"
+                                            outlined
+                                            rounded
+                                            size="small"
+                                            :title="`Edit details for ${person.name}`"
+                                            :aria-label="`Edit details for ${person.name}`"
+                                            @click.stop.prevent="openQuickEdit(person.id, 'details')"
+                                        />
 
-                                        <div
-                                            v-if="person.tags.length"
-                                            class="mt-3 flex flex-wrap gap-1.5"
-                                        >
-                                            <Tag
-                                                v-for="tag in person.tags"
-                                                :key="tag"
-                                                :value="tag"
-                                                severity="secondary"
-                                            />
-                                        </div>
-                                    </div>
+                                        <Button
+                                            icon="pi pi-tag"
+                                            severity="secondary"
+                                            outlined
+                                            rounded
+                                            size="small"
+                                            :title="`Edit categories for ${person.name}`"
+                                            :aria-label="`Edit categories for ${person.name}`"
+                                            @click.stop.prevent="openQuickEdit(person.id, 'tags')"
+                                        />
+                                    </template>
                                 </div>
-                            </template>
-                        </Card>
-                    </Link>
+                            </div>
+                        </template>
+                    </Card>
+
+                    <!-- A tap anywhere else on the card opens the person. It sits
+                         under the buttons so those keep working. -->
+                    <Link
+                        :href="route('people.show', person.id)"
+                        class="absolute inset-0 z-10 rounded-lg"
+                        tabindex="-1"
+                        aria-hidden="true"
+                    />
 
                     <!-- While selecting, this sits over the whole card so a click
                          toggles the person instead of following the link. -->
                     <button
                         v-if="selecting"
                         type="button"
-                        class="absolute inset-0 z-10 cursor-pointer rounded-lg border-2 border-transparent"
+                        class="absolute inset-0 z-30 cursor-pointer rounded-lg border-2 border-transparent"
                         :class="inSelection(person.id) ? 'border-blue-500 bg-blue-500/5' : ''"
                         :aria-pressed="inSelection(person.id)"
                         :aria-label="`${inSelection(person.id) ? 'Deselect' : 'Select'} ${person.name}`"
                         @click="toggleSelected(person.id)"
                     ></button>
 
-                    <span v-if="selecting" class="absolute right-3 top-3 z-20">
+                    <span v-if="selecting" class="absolute right-3 top-3 z-40">
                         <i
                             v-if="inSelection(person.id)"
                             class="pi pi-check-circle text-xl text-blue-600"
@@ -393,43 +455,6 @@ const clearSearch = () => {
                         />
                     </span>
 
-                    <div v-if="!selecting" class="absolute bottom-3 right-3 z-20 flex gap-1.5">
-                        <ButtonLink
-                            v-if="canDial(person.phone)"
-                            :href="telHref(person.phone)"
-                            external
-                            severity="secondary"
-                            outlined
-                            rounded
-                            size="small"
-                            :title="`Call ${person.name}`"
-                            :aria-label="`Call ${person.name}`"
-                        >
-                            <i class="pi pi-phone" />
-                        </ButtonLink>
-
-                        <Button
-                            icon="pi pi-pencil"
-                            severity="secondary"
-                            outlined
-                            rounded
-                            size="small"
-                            :title="`Edit details for ${person.name}`"
-                            :aria-label="`Edit details for ${person.name}`"
-                            @click.stop.prevent="openQuickEdit(person.id, 'details')"
-                        />
-
-                        <Button
-                            icon="pi pi-tag"
-                            severity="secondary"
-                            outlined
-                            rounded
-                            size="small"
-                            :title="`Edit categories for ${person.name}`"
-                            :aria-label="`Edit categories for ${person.name}`"
-                            @click.stop.prevent="openQuickEdit(person.id, 'tags')"
-                        />
-                    </div>
                 </li>
             </ul>
 

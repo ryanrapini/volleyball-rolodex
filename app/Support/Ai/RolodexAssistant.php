@@ -255,7 +255,7 @@ class RolodexAssistant
             ->get()
             ->map(fn (Person $person): array => [
                 'name' => $person->name,
-                'tags' => $person->categoryTags(10),
+                'tags' => array_column($person->categoryTags(10), 'label'),
             ])
             ->all();
 
@@ -285,7 +285,7 @@ class RolodexAssistant
                     'possible_duplicates' => $duplicates->map(fn (Person $person): array => [
                         'name' => $person->name,
                         'phone' => $person->phone,
-                        'tags' => $person->categoryTags(6),
+                        'tags' => array_column($person->categoryTags(6), 'label'),
                     ])->all(),
                     'retry' => 'Only call create_person again with confirm_new=true once the owner has said it is a different person.',
                 ];

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['label', 'position'])]
+#[Fillable(['label', 'position', 'colour'])]
 class CategoryOption extends Model
 {
     /** @use HasFactory<CategoryOptionFactory> */

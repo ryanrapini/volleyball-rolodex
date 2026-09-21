@@ -38,10 +38,10 @@ class Person extends Model
     }
 
     /**
-     * Short labels for a card, one per category. An explicit "no" stays off the
-     * card; only the affirmative answers are worth the space.
+     * The tags shown on a person's card. A category can be kept off the card
+     * entirely, can hide its own name, and each answer carries its own colour.
      *
-     * @return array<int, string>
+     * @return array<int, array{label: string, colour: ?string}>
      */
     public function categoryTags(int $limit = 6): array
     {
@@ -50,28 +50,40 @@ class Person extends Model
         foreach ($this->orderedValues()->groupBy('category_id') as $group) {
             $category = $group->first()->category;
 
-            if ($category === null) {
+            if ($category === null || ! $category->show_on_card) {
                 continue;
             }
 
             if ($category->type === CategoryType::Boolean) {
                 if ($group->contains(fn (PersonCategoryValue $value): bool => $value->value === true)) {
-                    $tags[] = $category->name;
+                    // "Under 6 ft" has no value of its own: the name is the
+                    // whole message.
+                    $tags[] = ['label' => $category->name, 'colour' => $category->colour];
                 }
             } else {
-                $labels = $group
-                    ->map(fn (PersonCategoryValue $value): ?string => $value->option?->label)
+                $answers = $group
+                    ->map(fn (PersonCategoryValue $value): ?array => $value->option === null
+                        ? null
+                        : [
+                            'label' => $value->option->label,
+                            'colour' => $value->option->colour,
+                        ])
                     ->filter()
-                    ->unique()
+                    ->unique('label')
                     ->values();
 
-                if ($labels->isNotEmpty()) {
-                    $tags[] = $category->name.': '.$labels->implode(', ');
+                foreach ($answers as $answer) {
+                    $tags[] = [
+                        'label' => $category->show_name_on_card
+                            ? $category->name.': '.$answer['label']
+                            : $answer['label'],
+                        'colour' => $answer['colour'],
+                    ];
                 }
             }
 
             if (count($tags) >= $limit) {
-                break;
+                return array_slice($tags, 0, $limit);
             }
         }
 

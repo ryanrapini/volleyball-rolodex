@@ -248,7 +248,13 @@ test('cards show affirmative answers and the detail page also shows no', functio
     $this->actingAs($user)
         ->get(route('people.index'))
         ->assertInertia(fn (Assert $page) => $page
-            ->where('people.data.0.tags', ['Can set', 'Skill level: BB', 'Position: Setter, Middle blocker'])
+            ->where('people.data.0.tags', [
+                ['label' => 'Can set', 'colour' => null],
+                ['label' => 'Skill level: BB', 'colour' => null],
+                // One tag per answer, so each can carry its own colour.
+                ['label' => 'Position: Setter', 'colour' => null],
+                ['label' => 'Position: Middle blocker', 'colour' => null],
+            ])
             ->etc());
 
     $this->actingAs($user)

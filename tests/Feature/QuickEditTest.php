@@ -66,7 +66,12 @@ test('the popup can change any field and any answer', function () {
         ])
         ->assertOk()
         ->assertJsonPath('person.name', 'New Name')
-        ->assertJsonPath('person.tags', ['Can set', 'Skill level: A', 'Position: Setter, Middle blocker']);
+        ->assertJsonPath('person.tags', [
+            ['label' => 'Can set', 'colour' => null],
+            ['label' => 'Skill level: A', 'colour' => null],
+            ['label' => 'Position: Setter', 'colour' => null],
+            ['label' => 'Position: Middle blocker', 'colour' => null],
+        ]);
 
     $person->refresh();
 
