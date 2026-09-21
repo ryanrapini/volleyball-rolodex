@@ -10,7 +10,7 @@ import Button from 'primevue/button';
 import FileUpload from 'primevue/fileupload';
 import Message from 'primevue/message';
 import Textarea from 'primevue/textarea';
-import { ref } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 
 const props = defineProps({
     form: {
@@ -47,10 +47,96 @@ const props = defineProps({
 const emit = defineEmits(['submit', 'cancel']);
 
 const preview = ref(null);
+const photoProblem = ref('');
+const photoNote = ref('');
+const shrinking = ref(false);
+const formEl = ref(null);
 
-const onFileSelect = (event) => {
-    const file = event.files?.[0] ?? null;
+/*
+ * A failed save lands the reader back at the top of the page, where the reason
+ * is nowhere in sight — which is how a rejected save comes to look like nothing
+ * happening at all. Put the first complaint in front of them instead.
+ */
+watch(
+    () => props.form.errors,
+    async (errors) => {
+        if (!errors || Object.keys(errors).length === 0) {
+            return;
+        }
 
+        await nextTick();
+
+        // After Inertia has finished resetting the scroll position.
+        setTimeout(() => {
+            formEl.value?.querySelector('.p-message')?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+            });
+        }, 150);
+    },
+    { deep: true },
+);
+
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_PHOTO_BYTES = 25 * 1024 * 1024;
+
+// Phone cameras produce 4-10MB photos. Uploading one over a mobile connection is
+// slow and often just fails, so anything larger than this is redrawn smaller
+// here before it is ever sent.
+const TARGET_LONG_EDGE = 1600;
+const WORTH_SHRINKING_BYTES = 600 * 1024;
+
+const megabytes = (bytes) => (bytes / 1024 / 1024).toFixed(1);
+
+/*
+ * Redraw a large photo on a canvas at 1600px and re-encode it, which lands
+ * around 300-500KB. Anything the browser cannot decode — some HEIC files — is
+ * handed back untouched, and the server says so if it will not take it.
+ */
+const shrink = async (file) => {
+    if (file.size <= WORTH_SHRINKING_BYTES || !ALLOWED_TYPES.includes(file.type)) {
+        return file;
+    }
+
+    try {
+        const bitmap = await createImageBitmap(file);
+        const longest = Math.max(bitmap.width, bitmap.height);
+        const scale = Math.min(1, TARGET_LONG_EDGE / longest);
+
+        if (scale === 1) {
+            bitmap.close?.();
+
+            return file;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(bitmap.width * scale);
+        canvas.height = Math.round(bitmap.height * scale);
+        canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        bitmap.close?.();
+
+        // PNG stays PNG so transparency survives; everything else becomes JPEG.
+        const keepPng = file.type === 'image/png';
+        const blob = await new Promise((resolve) =>
+            canvas.toBlob(resolve, keepPng ? 'image/png' : 'image/jpeg', 0.85),
+        );
+
+        if (!blob) {
+            return file;
+        }
+
+        const stem = file.name.replace(/\.[^.]+$/, '');
+
+        return new File([blob], `${stem}.${keepPng ? 'png' : 'jpg'}`, {
+            type: keepPng ? 'image/png' : 'image/jpeg',
+        });
+    } catch {
+        // Undecodable here; let the server have the original.
+        return file;
+    }
+};
+
+const usePhoto = (file, original) => {
     props.form.photo = file;
     props.form.remove_photo = false;
 
@@ -58,14 +144,76 @@ const onFileSelect = (event) => {
         URL.revokeObjectURL(preview.value);
     }
 
-    preview.value = file ? URL.createObjectURL(file) : null;
+    preview.value = URL.createObjectURL(file);
+
+    if (original && file.size < original.size) {
+        photoNote.value = `Resized from ${megabytes(original.size)} MB to ${megabytes(file.size)} MB.`;
+    }
+};
+
+/*
+ * PrimeVue quietly drops a file it does not like, which looked exactly like the
+ * photo not attaching at all. Every rejection here says why, out loud.
+ */
+const onFileSelect = async (event) => {
+    const file = event.files?.[0] ?? null;
+
+    photoProblem.value = '';
+    photoNote.value = '';
+
+    if (!file) {
+        return;
+    }
+
+    if (!ALLOWED_TYPES.includes(file.type)) {
+        photoProblem.value = 'That is not a photo the browser can read. Use a JPG, PNG or WebP.';
+
+        return;
+    }
+
+    if (file.size > MAX_PHOTO_BYTES) {
+        photoProblem.value = `That photo is ${megabytes(file.size)} MB. The limit is 25 MB.`;
+
+        return;
+    }
+
+    shrinking.value = true;
+
+    try {
+        usePhoto(await shrink(file), file);
+    } finally {
+        shrinking.value = false;
+    }
 };
 
 const clearPhoto = () => {
     props.form.photo = null;
     props.form.remove_photo = true;
     preview.value = null;
+    photoNote.value = '';
+    photoProblem.value = '';
 };
+
+/*
+ * On a phone the save button is at the bottom and a field error is at the top,
+ * which is how a failed save comes to look like nothing happening at all.
+ */
+const errorSummary = computed(() => {
+    const errors = { ...(props.form.errors ?? {}) };
+
+    // The duplicate warning has its own message at the top of the form.
+    delete errors.duplicate;
+
+    const messages = Object.values(errors).filter(Boolean);
+
+    if (messages.length === 0) {
+        return '';
+    }
+
+    return messages.length === 1
+        ? String(messages[0])
+        : `${messages.length} things need fixing first — ${messages[0]}`;
+});
 
 /*
  * The server sends the form back with a warning instead of blocking outright,
@@ -79,7 +227,7 @@ const addAnyway = () => {
 </script>
 
 <template>
-    <form class="space-y-4 sm:space-y-5" @submit.prevent="$emit('submit')">
+    <form ref="formEl" class="space-y-4 sm:space-y-5" @submit.prevent="$emit('submit')">
         <Message v-if="form.errors.duplicate" severity="warn" :closable="false">
             <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <span>{{ form.errors.duplicate }}</span>
@@ -120,7 +268,6 @@ const addAnyway = () => {
                             mode="basic"
                             accept="image/png,image/jpeg,image/webp"
                             :auto="true"
-                            :maxFileSize="5000000"
                             chooseLabel="Choose photo"
                             @select="onFileSelect"
                         />
@@ -137,7 +284,15 @@ const addAnyway = () => {
                     </div>
                 </div>
 
-                <p class="mt-1 text-xs text-gray-500">JPG, PNG or WebP, up to 5 MB.</p>
+                <p v-if="shrinking" class="mt-1 text-xs text-gray-500">Resizing…</p>
+                <p v-else-if="photoNote" class="mt-1 text-xs text-gray-500">{{ photoNote }}</p>
+                <p v-else class="mt-1 text-xs text-gray-500">
+                    JPG, PNG or WebP. Big photos are resized before they are sent.
+                </p>
+
+                <Message v-if="photoProblem" severity="error" size="small" variant="simple" class="mt-2">
+                    {{ photoProblem }}
+                </Message>
 
                 <InputError class="mt-2" :message="form.errors.photo" />
             </div>
@@ -158,7 +313,7 @@ const addAnyway = () => {
                 <InputError class="mt-2" :message="form.errors.name" />
             </div>
 
-            <div class="grid gap-5 sm:grid-cols-2">
+            <div class="grid gap-4 sm:grid-cols-2 sm:gap-5">
                 <div>
                     <InputLabel for="phone" value="Phone" />
 
@@ -194,7 +349,7 @@ const addAnyway = () => {
                 <Textarea
                     id="notes"
                     v-model="form.notes"
-                    rows="6"
+                    rows="5"
                     fluid
                     autoResize
                     placeholder="Plays Wednesday nights, has a net, prefers beach…"
@@ -214,18 +369,26 @@ const addAnyway = () => {
             :answers="form.answers"
         />
 
-        <div class="flex flex-wrap items-center gap-3 border-t border-gray-200 pt-5">
-            <PrimaryButton :disabled="form.processing">{{ submitLabel }}</PrimaryButton>
+        <div class="border-t border-gray-200 pt-4 sm:pt-5">
+            <Message v-if="errorSummary" severity="error" size="small" :closable="false" class="mb-4">
+                {{ errorSummary }}
+            </Message>
 
-            <Button
-                v-if="!cancelHref"
-                type="button"
-                severity="secondary"
-                outlined
-                label="Cancel"
-                @click="$emit('cancel')"
-            />
-            <ButtonLink v-else :href="cancelHref" severity="secondary" outlined label="Cancel" />
+            <div class="flex flex-wrap items-center gap-3">
+                <PrimaryButton :disabled="form.processing">
+                    {{ form.processing ? 'Saving…' : submitLabel }}
+                </PrimaryButton>
+
+                <Button
+                    v-if="!cancelHref"
+                    type="button"
+                    severity="secondary"
+                    outlined
+                    label="Cancel"
+                    @click="$emit('cancel')"
+                />
+                <ButtonLink v-else :href="cancelHref" severity="secondary" outlined label="Cancel" />
+            </div>
         </div>
     </form>
 </template>
