@@ -17,3 +17,14 @@
         @apply bg-gray-50 font-sans antialiased;
     }
 }
+
+/*
+ * Dialogs here have no title in the header, which leaves the close button as the
+ * only thing in the header's actions — and the header's default alignment drops
+ * it at the left edge. A thumb reaches the right, so the actions are pinned
+ * there instead. (PrimeVue wraps the button in .p-dialog-header-actions, so that
+ * is the element that moves, not the button.)
+ */
+.p-dialog-header-actions {
+    margin-left: auto;
+}
