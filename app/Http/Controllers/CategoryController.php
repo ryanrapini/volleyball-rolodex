@@ -93,6 +93,62 @@ class CategoryController extends Controller
             ->with('status', 'Saved the '.$category->name.' category.');
     }
 
+    /**
+     * Set — or clear — the filter state this category's list opens in, straight
+     * from the filter control the owner is already using, so a filter they like
+     * does not have to be rebuilt in the category settings.
+     */
+    public function storeDefaultFilter(Request $request, Category $category): RedirectResponse
+    {
+        $this->authorize('update', $category);
+
+        // These arrive already in the stored shape: choice ids, or yes / no, or
+        // "unset" for nobody-has-answered.
+        $values = array_values(array_unique(array_map('strval', (array) $request->input('values', []))));
+
+        $allowed = array_merge(
+            $category->type === CategoryType::Boolean
+                ? ['yes', 'no']
+                : $category->options()->pluck('id')->all(),
+            ['unset'],
+        );
+
+        if (array_diff($values, $allowed) !== []) {
+            return back()->with('error', 'That is not an answer '.$category->name.' has.');
+        }
+
+        if ($category->type === CategoryType::Single && count(array_diff($values, ['unset'])) > 1) {
+            return back()->with('error', $category->name.' takes one answer, so it can only default to one.');
+        }
+
+        $category->update(['default_filter' => $values]);
+
+        return back()->with('status', $values === []
+            ? $category->name.' opens with no filter now.'
+            : $category->name.' opens with '.$this->labelsFor($category, $values).'.');
+    }
+
+    /**
+     * @param  array<int, string>  $values
+     */
+    private function labelsFor(Category $category, array $values): string
+    {
+        if ($category->type === CategoryType::Boolean) {
+            return implode(' and ', array_map(
+                fn (string $value): string => $value === 'unset' ? 'nobody has answered' : $value,
+                $values,
+            ));
+        }
+
+        $labels = $category->options()->whereIn('id', $values)->pluck('label')->all();
+
+        if (in_array('unset', $values, true)) {
+            $labels[] = 'nobody has answered';
+        }
+
+        return implode(', ', $labels);
+    }
+
     public function destroy(Category $category): RedirectResponse
     {
         $this->authorize('delete', $category);
@@ -185,25 +241,29 @@ class CategoryController extends Controller
      */
     private function defaultFilter(Category $category, array $submitted): array
     {
+        $submitted = array_map('strval', $submitted);
+
+        // "Unset" travels as itself: it is not one of the answers.
+        $unset = in_array('unset', $submitted, true);
+
         if (! $category->type->hasOptions()) {
-            return array_values(array_intersect(
-                array_map('strval', $submitted),
-                ['yes', 'no'],
-            ));
-        }
+            $values = array_values(array_intersect($submitted, ['yes', 'no']));
+        } else {
+            $ids = $category->options()->pluck('id')->all();
+            $values = [];
 
-        $ids = $category->options()->pluck('id')->all();
-        $chosen = [];
+            foreach ($submitted as $position) {
+                $id = is_numeric($position) ? ($ids[(int) $position] ?? null) : null;
 
-        foreach ($submitted as $position) {
-            $id = $ids[(int) $position] ?? null;
-
-            if ($id !== null) {
-                $chosen[] = $id;
+                if ($id !== null) {
+                    $values[] = $id;
+                }
             }
+
+            $values = array_values(array_unique($values));
         }
 
-        return array_values(array_unique($chosen));
+        return $unset ? [...$values, 'unset'] : $values;
     }
 
     /**
@@ -223,6 +283,12 @@ class CategoryController extends Controller
         $positions = [];
 
         foreach ($stored as $value) {
+            if ($value === 'unset') {
+                $positions[] = 'unset';
+
+                continue;
+            }
+
             $index = array_search($value, $ids, true);
 
             if ($index !== false) {

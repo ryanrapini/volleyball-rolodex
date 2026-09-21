@@ -30,6 +30,9 @@ class PersonController extends Controller
 
     private const NO = 'no';
 
+    // Filtering for people who have not answered a category at all.
+    private const UNSET = 'unset';
+
     /**
      * Home screen for the whole app: search the rolodex and scroll the list.
      */
@@ -78,6 +81,9 @@ class PersonController extends Controller
         return Inertia::render('People/Create', [
             'categories' => $this->presentCategories($categories),
             'answers' => PersonAnswers::blank($categories),
+            // Searching for somebody who is not in the rolodex yet is the usual
+            // way a new person gets added, so the search carries into the form.
+            'suggestedName' => (string) $request->query('name', ''),
         ]);
     }
 
@@ -99,8 +105,8 @@ class PersonController extends Controller
         PersonAnswers::sync($person, $request->answers(), $request->categories());
 
         return redirect()
-            ->route('people.show', $person)
-            ->with('status', 'Added '.$person->name.' to your rolodex.');
+            ->route('people.create')
+            ->with('added', ['id' => $person->id, 'name' => $person->name]);
     }
 
     public function show(Person $person): Response
@@ -367,9 +373,12 @@ class PersonController extends Controller
         $filters = [];
 
         foreach ($categories as $category) {
-            $allowed = $category->type === CategoryType::Boolean
-                ? [self::YES, self::NO]
-                : $category->options->pluck('id')->all();
+            $allowed = array_merge(
+                $category->type === CategoryType::Boolean
+                    ? [self::YES, self::NO]
+                    : $category->options->pluck('id')->all(),
+                [self::UNSET],
+            );
 
             if (! array_key_exists($category->getKey(), $submitted)) {
                 // Nothing was asked for this category, so open in the state the
@@ -410,10 +419,18 @@ class PersonController extends Controller
     private function applyFilters(Builder $query, array $filters): void
     {
         foreach ($filters as $categoryId => $values) {
+            // "Unset" is not an answer, it is the absence of one, so it reads as
+            // "has no value row for this category" rather than a value to match.
+            $unset = in_array(self::UNSET, $values, true);
             $yesNo = array_intersect($values, [self::YES, self::NO]);
-            $optionIds = array_diff($values, [self::YES, self::NO]);
+            $optionIds = array_diff($values, [self::YES, self::NO, self::UNSET]);
 
-            $query->where(function (Builder $match) use ($categoryId, $yesNo, $optionIds): void {
+            $query->where(function (Builder $match) use ($categoryId, $yesNo, $optionIds, $unset): void {
+                if ($unset) {
+                    $match->orWhereDoesntHave('categoryValues', fn (Builder $value_) => $value_
+                        ->where('category_id', $categoryId));
+                }
+
                 foreach ($yesNo as $value) {
                     $match->orWhereHas('categoryValues', fn (Builder $value_) => $value_
                         ->where('category_id', $categoryId)
@@ -443,22 +460,27 @@ class PersonController extends Controller
                 'id' => $category->id,
                 'name' => $category->name,
                 'type' => $category->type->value,
-                'chips' => $category->type === CategoryType::Boolean
-                    ? [
-                        ['value' => self::YES, 'label' => 'Yes'],
-                        ['value' => self::NO, 'label' => 'No'],
-                    ]
-                    : $category->options
-                        ->map(fn (CategoryOption $option): array => [
-                            'value' => $option->id,
-                            'label' => $option->label,
-                        ])
-                        ->values()
-                        ->all(),
+                'chips' => array_merge(
+                    $category->type === CategoryType::Boolean
+                        ? [
+                            ['value' => self::YES, 'label' => 'Yes'],
+                            ['value' => self::NO, 'label' => 'No'],
+                        ]
+                        : $category->options
+                            ->map(fn (CategoryOption $option): array => [
+                                'value' => $option->id,
+                                'label' => $option->label,
+                            ])
+                            ->values()
+                            ->all(),
+                    // Nobody has answered this one yet.
+                    [['value' => self::UNSET, 'label' => 'Unset']],
+                ),
                 'selected' => $filters[$category->getKey()] ?? [],
                 // Told to the browser so it only sends an explicit "cleared"
                 // marker for categories that have a default to clear.
                 'has_default' => ($category->default_filter ?? []) !== [],
+                'default_filter' => array_values($category->default_filter ?? []),
             ])
             ->values()
             ->all();

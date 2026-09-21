@@ -58,12 +58,6 @@ const isDefault = (value) =>
     (props.form.default_filter ?? []).some((entry) => String(entry) === String(value));
 
 const toggleDefault = (value) => {
-    if (props.form.type === 'single') {
-        props.form.default_filter = isDefault(value) ? [] : [value];
-
-        return;
-    }
-
     const chosen = [...(props.form.default_filter ?? [])];
     const at = chosen.findIndex((entry) => String(entry) === String(value));
 
@@ -71,6 +65,18 @@ const toggleDefault = (value) => {
         chosen.push(value);
     } else {
         chosen.splice(at, 1);
+    }
+
+    if (props.form.type === 'single') {
+        // One answer at a time, though "unset" is not an answer and may sit
+        // alongside the one that is.
+        const answers = chosen.filter((entry) => String(entry) !== 'unset');
+
+        props.form.default_filter = chosen.some((entry) => String(entry) === 'unset')
+            ? ['unset', ...answers.slice(-1)]
+            : answers.slice(-1);
+
+        return;
     }
 
     props.form.default_filter = chosen;
@@ -205,6 +211,7 @@ const setOptionColour = (index, colour) => {
                     v-for="choice in [
                         { label: 'Yes', value: 'yes' },
                         { label: 'No', value: 'no' },
+                        { label: 'Unset', value: 'unset' },
                     ]"
                     :key="choice.value"
                     class="flex items-center gap-2"
@@ -232,6 +239,17 @@ const setOptionColour = (index, colour) => {
                         @update:checked="toggleDefault(index)"
                     />
                     <span class="text-sm text-gray-700">{{ option || `Choice ${index + 1}` }}</span>
+                </label>
+
+                <label class="flex items-center gap-2">
+                    <Checkbox
+                        :checked="isDefault('unset')"
+                        @update:checked="toggleDefault('unset')"
+                    />
+                    <span class="text-sm text-gray-700">
+                        Unset
+                        <span class="text-xs text-gray-500">— nobody has answered yet</span>
+                    </span>
                 </label>
             </div>
 
@@ -310,10 +328,10 @@ const setOptionColour = (index, colour) => {
             </div>
         </div>
 
-        <div class="flex flex-wrap items-center gap-3 border-t border-gray-200 pt-5">
-            <Button type="submit" :label="submitLabel" :disabled="form.processing" />
-
+        <div class="flex flex-wrap items-center justify-end gap-3 border-t border-gray-200 pt-5">
             <ButtonLink :href="cancelHref" severity="secondary" outlined label="Cancel" />
+
+            <Button type="submit" :label="submitLabel" :disabled="form.processing" />
         </div>
     </form>
 </template>

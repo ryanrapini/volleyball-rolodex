@@ -24,6 +24,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('people', PersonController::class);
     Route::resource('categories', CategoryController::class)->except('show');
 
+    // Save the filter state the list should open in, from the filter control
+    // itself rather than from the category settings screen.
+    Route::post('/categories/{category}/default-filter', [CategoryController::class, 'storeDefaultFilter'])
+        ->name('categories.default-filter');
+
     // Quick edit from the list: JSON in, JSON out, list stays put. The save is a
     // POST because PHP only parses multipart bodies for POST, and the popup can
     // carry a photo.

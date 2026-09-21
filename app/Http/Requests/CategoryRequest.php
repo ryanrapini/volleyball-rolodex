@@ -69,15 +69,19 @@ class CategoryRequest extends FormRequest
      */
     private function checkDefaultFilter(Validator $validator, ?CategoryType $type): void
     {
-        $submitted = array_values((array) $this->input('default_filter', []));
+        $submitted = array_map('strval', array_values((array) $this->input('default_filter', [])));
 
-        if ($submitted === []) {
+        // "Unset" — nobody has answered — is a legitimate thing to open filtered
+        // on, and it is not one of the category's answers, so it drops out here.
+        $values = array_values(array_diff($submitted, ['unset']));
+
+        if ($values === []) {
             return;
         }
 
         if ($type === CategoryType::Boolean) {
-            foreach ($submitted as $value) {
-                if (! in_array((string) $value, ['yes', 'no'], true)) {
+            foreach ($values as $value) {
+                if (! in_array($value, ['yes', 'no'], true)) {
                     $validator->errors()->add('default_filter', 'A yes / no category can only default to yes or no.');
 
                     return;
@@ -89,13 +93,13 @@ class CategoryRequest extends FormRequest
 
         $choices = count($this->options());
 
-        if ($type === CategoryType::Single && count($submitted) > 1) {
+        if ($type === CategoryType::Single && count($values) > 1) {
             $validator->errors()->add('default_filter', 'A pick-one category can only default to one choice.');
 
             return;
         }
 
-        foreach ($submitted as $value) {
+        foreach ($values as $value) {
             if (! is_numeric($value) || (int) $value < 0 || (int) $value >= $choices) {
                 $validator->errors()->add('default_filter', 'That is not a choice in this category.');
 
