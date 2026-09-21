@@ -358,7 +358,7 @@ const clearSearch = () => {
                         <Badge v-if="activeCount" :value="activeCount" class="ml-2" />
                     </Button>
 
-                    <span class="min-w-0 truncate text-sm text-gray-600">
+                    <span class="min-w-0 truncate text-xs text-gray-600 sm:text-sm">
                         {{ people.total }}
                         {{ people.total === 1 ? 'person' : 'people' }}
                         <span v-if="term">matching “{{ term }}”</span>
